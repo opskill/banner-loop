@@ -10,6 +10,14 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 TEXTURE_DIR = os.path.join(ROOT, "assets", "textures")
 
 
+def _texture_dir(folder):
+    """assets/textures/<folder>, or a clear error if the textures were never downloaded."""
+    d = os.path.join(TEXTURE_DIR, folder)
+    if not os.path.isdir(d) or not os.listdir(d):
+        raise FileNotFoundError(f"textures missing — run `npm run assets` (expected {d})")
+    return d
+
+
 # ---------------------------------------------------------------- arguments
 def parse_args(name, frames=150, extra=None, engine="eevee"):
     """Parse the common arguments. extra(parser) can add scene-specific ones."""
@@ -202,7 +210,7 @@ def make_pbr_from_textures(name, folder):
     mat.use_nodes = True
     nt = mat.node_tree
     bsdf = nt.nodes["Principled BSDF"]
-    base_dir = os.path.join(TEXTURE_DIR, folder)
+    base_dir = _texture_dir(folder)
 
     def find(*keys):
         for f in sorted(os.listdir(base_dir)):
@@ -266,7 +274,7 @@ def make_tiled_pbr(name, folder, tile=1.0, tint=None, normal_strength=1.0, rough
     mat.use_nodes = True
     nt = mat.node_tree
     bsdf = nt.nodes["Principled BSDF"]
-    base_dir = os.path.join(TEXTURE_DIR, folder)
+    base_dir = _texture_dir(folder)
 
     coord = nt.nodes.new("ShaderNodeTexCoord")
     mapping = nt.nodes.new("ShaderNodeMapping")

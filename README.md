@@ -56,12 +56,12 @@ Results land in `out/concepts/video/` (gitignored).
 |---|---|---|
 | `--scene NAME` | required | `scenes/NAME.py` |
 | `--key KEY` | required | output name, e.g. `10_cable_trays` |
-| `--frames A-B` | `1-150` | 5 s @ 30 fps; re-render a range |
+| `--frames A-B` | `1-150` | 5 s @ 30 fps. A partial range (e.g. `40-60`) re-renders only those frames, then encodes/upscales/QCs the whole sequence (frames 1..N must all exist); only a full range without `--resume` clears the frames folder |
 | `--spp N` | `64` | Cycles samples (96 for fine-detail macro scenes, 32 for drafts) |
 | `--chunk N` | `50` | frames per Blender run |
-| `--still F` | – | render a single frame and stop |
+| `--still F` | – | render a single frame and stop (on failure the end of the Blender log is printed) |
 | `--resume` | off | continue after a crash; keeps finished frames, re-renders empty placeholders |
-| `--upscale 4k\|none` | `4k` | AI 4× → 3840×1080, or 1920 only |
+| `--upscale 4k\|none` | `4k` (`none` off macOS) | AI 4× → 3840×1080 (macOS 26+, `clang`), or 1920 only |
 | `--no-encode` / `--no-stats` | off | frames only / skip QC |
 | `--no-lock` | off | skip the shared GPU lock (see below) |
 | `--env K=V` | – | scene knobs read from the environment (e.g. `FIBER_CENTER_FILL=0.6`) |
@@ -78,9 +78,13 @@ frame) matches the normal frame-to-frame diff.
 **4× then half.** Apple's quality super-resolution scaler only supports 4× (input ≤ 1920×1080); the low-latency variant
 does 2× but only up to 960×960. So `tools/vtsr` upscales 1920×540 → 7680×2160 and down-samples to 3840×1080 with
 `VTPixelTransferSession`, which also averages away AI edge artefacts. It pre-rolls the last 8 frames so the temporal
-model is warmed up at frame 1 and the loop seam stays clean.
+model is warmed up at frame 1 and the loop seam stays clean. The SR model shifts colour slightly (blue about −1.8 levels
+on cable trays), so each output frame gets a low-frequency colour fix back to the 1920 source (mean difference < 0.05
+levels; detail is kept). Both mp4s are tagged BT.709 (limited range).
 
-**Banner QC** (`tools/loopstats.py <frames_dir>`):
+**Banner QC** (`tools/loopstats.py [--check] <frames_dir>`; `loop.sh` writes the 1920 and the "4K (SR)" numbers to
+`<key>_stats.txt`; `--check` exits 1 if the seam is > 1.5× adjacent diff + 0.5, pumping exceeds ±10 % or the centre
+p99.9 luma is > 160):
 
 | metric | target |
 |---|---|
@@ -89,9 +93,10 @@ model is warmed up at frame 1 and the loop seam stays clean.
 | frame-mean pumping | within ~±8 % |
 | centre 30 % max luma | ideally < ~120 (headline zone stays calm) |
 
-**Shared GPU lock.** Each Blender run takes `/tmp/blender_concept.lock` (`mkdir`/`rmdir`) and waits 25 s between chunks,
-so several agents or jobs can queue on one GPU without fighting. If a crash leaves the lock behind, remove it once no
-Blender process is running.
+**Shared GPU lock.** Each Blender run takes `/tmp/blender_concept.lock` (`mkdir`/`rmdir`, holder pid in `pid`) and waits
+25 s between chunks, so several agents or jobs can queue on one GPU without fighting. A waiting run prints who holds it.
+The lock is released on exit and Ctrl-C; if its holder died anyway, the next run takes it over. A lock without a pid
+(older tools) is never taken over: remove it once no Blender process is running.
 
 ## Install as a Claude Code plugin
 
