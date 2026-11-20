@@ -10,7 +10,7 @@ Apple 기기 내장 AI 초해상도(4배) → 3840×1080 MP4. 렌더할 때마�
 웹사이트 히어로 배너용으로 만들었습니다. 5초 루프의 이음새가 보이지 않고, HTML 헤드라인이 올라갈 가운데는 어둡고
 차분하게 비워 두며, 움직임은 잔잔하고, 영상 안에 글자나 로고가 없습니다.
 
-**[▶ 데모](https://banner-loop-demo.vercel.app)** · [MP4 내려받기](https://github.com/opskill/banner-loop/releases/tag/v0.1.0)
+**[▶ 데모](https://banner-loop-demo.vercel.app)** · [MP4 내려받기](https://github.com/opskill/banner-loop/releases/tag/v0.2.0)
 
 ![케이블 트레이 루프](docs/examples/10_cable_trays.gif)
 

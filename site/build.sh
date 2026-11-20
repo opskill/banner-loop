@@ -3,7 +3,7 @@
 # usage: site/build.sh [release-tag]   then: cd site/dist && vercel deploy --prod
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-TAG=${1:-v0.1.0}
+TAG=${1:-v0.2.0}
 D=$ROOT/site/dist
 mkdir -p "$D/posters" "$D/videos"
 cp "$ROOT/site/index.html" "$ROOT/site/vercel.json" "$D/"

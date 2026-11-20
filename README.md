@@ -10,7 +10,7 @@ Apple's on-device AI super-resolution (4×) → 3840×1080 MP4, with loop QC num
 Built for website hero banners: 5-second loops that never show a seam, keep the centre dark and calm for an HTML
 headline, move gently, and contain no text or logos.
 
-**[▶ Live demo](https://banner-loop-demo.vercel.app)** · [download the MP4s](https://github.com/opskill/banner-loop/releases/tag/v0.1.0)
+**[▶ Live demo](https://banner-loop-demo.vercel.app)** · [download the MP4s](https://github.com/opskill/banner-loop/releases/tag/v0.2.0)
 
 ![Cable trays loop](docs/examples/10_cable_trays.gif)
 
