@@ -132,4 +132,4 @@ tools/loop.sh --scene concept_cable_trays --key 10_cable_trays
 
 - `--frames`, `--spp`, `--still`, `--resume`, `--upscale none` 같은 옵션은 위 표를 참고하세요.
 - 4K로 바로 렌더하는 것보다 약 3~3.5배 빠릅니다.
-- Claude Code 플러그인으로 설치: `claude plugin marketplace add jsc7727/banner-loop` → `claude plugin install banner-loop@banner-loop`. 이후 \"케이블 트레이 4K로 렌더해줘\"처럼 말로 시키면 됩니다.
+- Claude Code 플러그인으로 설치: `claude plugin marketplace add jsc7727/banner-loop` → `claude plugin install banner-loop@banner-loop`. 이후 "케이블 트레이 4K로 렌더해줘"처럼 말로 시키면 됩니다.
