@@ -1,11 +1,11 @@
-"""컨셉 03 - CDN / 글로벌 네트워크: 궤도에서 내려다본 어두운 행성의 가장자리(곡면 지평선).
+"""Concept 03 - CDN / global network: the edge (curved horizon) of a dark planet seen from orbit.
 
-화면 아래쪽을 행성의 둥근 지평선이 가로지르고, 가장자리에 얇은 대기 빛이 감돈다.
-표면의 엣지 노드 사이를 가는 빛의 호(arc)가 건너뛰고, 도시 불빛 군집이 몇 개 보인다.
-가운데(지평선 위)는 문구용으로 어둡게 비운다. 내용은 화면 좌우에 몰아 둔다.
+The planet's round horizon crosses the lower part of the frame, with a thin atmospheric glow along the edge.
+Thin arcs of light jump between edge nodes on the surface, and a few clusters of city lights are visible.
+The centre (above the horizon) is left dark and empty for the headline. Content is kept to the left and right sides.
 
-루프(5초, 150프레임): 아크는 루프당 한 번씩, 위상을 고르게 흩어서 발사(2.5초 반복이 보이지 않게), 행성은 Y축으로 아주 작게
-사인 흔들림(A*sin(2pi t/T)) -> 끝 프레임 = 첫 프레임.
+Loop (5 s, 150 frames): each arc fires once per loop with phases spread evenly (so no 2.5 s repetition is visible); the planet makes a very small
+sine sway about the Y axis (A*sin(2pi t/T)) -> last frame = first frame.
 """
 import math
 import os
@@ -21,8 +21,8 @@ from mathutils import Vector  # noqa: E402
 import lib  # noqa: E402
 
 def _extra(p):
-    p.add_argument("--start", type=int, default=None, help="애니메이션 시작 프레임 (청크 렌더)")
-    p.add_argument("--end", type=int, default=None, help="애니메이션 끝 프레임 (청크 렌더)")
+    p.add_argument("--start", type=int, default=None, help="animation start frame (chunked render)")
+    p.add_argument("--end", type=int, default=None, help="animation end frame (chunked render)")
     p.add_argument("--spp", type=int, default=None)
     p.add_argument("--seed", type=int, default=0)
 
@@ -33,7 +33,7 @@ lib.setup_render(scene, args)
 scene.render.resolution_x, scene.render.resolution_y = 1920, 540
 if args.engine == "cycles":
     scene.cycles.samples = args.spp or (32 if args.preview else 128)
-    scene.cycles.seed = args.seed                 # 고정 시드 (프레임마다 같은 노이즈 무늬 -> 루프 이음새 없음)
+    scene.cycles.seed = args.seed                 # fixed seed (same noise pattern every frame -> no loop seam)
     scene.cycles.use_animated_seed = False
     scene.render.use_persistent_data = True
     scene.cycles.adaptive_threshold = 0.03 if args.preview else 0.01
@@ -50,12 +50,12 @@ for look in ("AgX - Medium High Contrast", "Medium High Contrast"):
         continue
 
 N_FRAMES = args.frames
-R = 100.0                      # 행성 반지름 (m)
-H = 12.0                       # 카메라 고도
+R = 100.0                      # planet radius (m)
+H = 12.0                       # camera altitude
 rng = random.Random(7)
 
 
-# ------------------------------------------------------------------ 노드 헬퍼
+# ------------------------------------------------------------------ node helpers
 class NB:
     def __init__(self, nt):
         self.nt = nt
@@ -107,13 +107,13 @@ def new_mat(name):
 
 
 def loop_time():
-    """0->1 을 N_FRAMES 동안 선형으로, 주기 반복. 셰이더에서 공유한다."""
+    """Linear 0->1 over N_FRAMES, repeating periodically. Shared by the shaders."""
     holder = bpy.data.node_groups.new("LoopTime", "ShaderNodeTree")
     holder.interface.new_socket("t", in_out="OUTPUT", socket_type="NodeSocketFloat")
     v = holder.nodes.new("ShaderNodeValue")
     o = holder.nodes.new("NodeGroupOutput")
     holder.links.new(v.outputs[0], o.inputs[0])
-    # 드라이버로 선형 시간 (Blender 5.2 에서 키프레임은 ease 가 걸린다). frame N+1 -> 1.0 == frame 1 (fract)
+    # linear time via a driver (in Blender 5.2 keyframes get eased). frame N+1 -> 1.0 == frame 1 (fract)
     fc = v.outputs[0].driver_add("default_value")
     fc.driver.type = "SCRIPTED"
     fc.driver.expression = f"(frame-1)/{N_FRAMES}"
@@ -129,7 +129,7 @@ def time_socket(nb):
     return g.outputs[0]
 
 
-# ------------------------------------------------------------------ 월드: 거의 검은 우주 + 희미한 별
+# ------------------------------------------------------------------ world: nearly black space + faint stars
 lib.set_world(color=(0.0, 0.0, 0.0, 1.0), strength=1.0)
 wnt = scene.world.node_tree
 wb = NB(wnt)
@@ -140,7 +140,7 @@ wb.link(tc.outputs["Generated"], vor.inputs["Vector"])
 star = wb.math("LESS_THAN", vor.outputs["Distance"], 0.045)
 twk = wb.math("POWER", wb.vmath("DOT_PRODUCT", vor.outputs["Color"], (0.333, 0.333, 0.333)), 6.0)
 star = wb.math("MULTIPLY", star, twk)
-# 하늘 그라데이션: 지평선 근처는 아주 옅은 남색, 위로 갈수록 검정
+# sky gradient: very pale navy near the horizon, black higher up
 sep = wb.node("ShaderNodeSeparateXYZ")
 wb.link(tc.outputs["Generated"], sep.inputs[0])
 sky = wb.math("MULTIPLY", wb.math("POWER", wb.math("SUBTRACT", 1.0, wb.math("ABSOLUTE", sep.outputs["Z"]), clamp=True), 8.0), 0.004)
@@ -150,7 +150,7 @@ wb.link(wb.math("ADD", wb.math("MULTIPLY", star, 0.4), wb.math("MULTIPLY", sky, 
 wb.link(wb.math("ADD", wb.math("MULTIPLY", star, 0.5), wb.math("MULTIPLY", sky, 1.6)), col.inputs[2])
 wb.link(col.outputs[0], bg.inputs["Color"])
 
-# ------------------------------------------------------------------ 행성 (흔들림용 그룹)
+# ------------------------------------------------------------------ planet (group for the sway)
 planet_root = lib.group("PlanetRoot", (0, 0, -R))
 
 bpy.ops.mesh.primitive_uv_sphere_add(radius=R, segments=512, ring_count=256, location=(0, 0, -R))
@@ -161,18 +161,18 @@ for p in planet.data.polygons:
 planet.parent = planet_root
 planet.location = (0, 0, 0)
 
-SUN_DIR = Vector((-0.55, 1.0, -0.22)).normalized()      # 태양: 행성 뒤 왼쪽, 지평선 아래 -> 얇은 초승달 림
+SUN_DIR = Vector((-0.55, 1.0, -0.22)).normalized()      # sun: behind the planet on the left, below the horizon -> thin crescent rim
 
 mat, nb, out = new_mat("Planet Surface")
 tco = nb.node("ShaderNodeTexCoord")
 P = tco.outputs["Object"]
-# 큰 땅/바다 무늬 (추상)
+# large land/ocean pattern (abstract)
 n1 = nb.node("ShaderNodeTexNoise", Scale=0.035, Detail=10.0, Roughness=0.62)
 nb.link(P, n1.inputs["Vector"])
 land = nb.node("ShaderNodeMapRange", **{"From Min": 0.48, "From Max": 0.56})
 nb.link(n1.outputs["Fac"], land.inputs["Value"])
 landf = land.outputs[0]
-# 도시 불빛: 땅 위, 군집 마스크 * 잔 점
+# city lights: on land, cluster mask * fine dots
 n2 = nb.node("ShaderNodeTexNoise", Scale=0.11, Detail=4.0, Roughness=0.5)
 nb.link(P, n2.inputs["Vector"])
 cluster = nb.node("ShaderNodeMapRange", **{"From Min": 0.64, "From Max": 0.70})
@@ -185,7 +185,7 @@ nb.link(P, n4.inputs["Vector"])
 fine = nb.math("POWER", n4.outputs["Fac"], 4.0)
 city = nb.math("MULTIPLY", nb.math("MULTIPLY", cluster.outputs[0], landf),
                nb.math("ADD", dots, nb.math("MULTIPLY", nb.math("POWER", fine, 2.0), 0.6)))
-# 화면 가운데(월드 x 가 0 근처)는 도시 불빛을 약하게 -> 문구 영역 정리 (월드 좌표라 흔들림과 무관)
+# dim the city lights at the frame centre (world x near 0) -> clears the headline area (world coordinates, so unaffected by the sway)
 tcw = nb.node("ShaderNodeNewGeometry")
 sepw = nb.node("ShaderNodeSeparateXYZ")
 nb.link(tcw.outputs["Position"], sepw.inputs[0])
@@ -199,8 +199,8 @@ bsdf = nb.node("ShaderNodeBsdfPrincipled")
 base_mix = nb.node("ShaderNodeMix")
 base_mix.data_type = "RGBA"
 nb.link(landf, base_mix.inputs["Factor"])
-base_mix.inputs["A"].default_value = (0.004, 0.010, 0.020, 1)     # 바다
-base_mix.inputs["B"].default_value = (0.020, 0.024, 0.028, 1)     # 땅
+base_mix.inputs["A"].default_value = (0.004, 0.010, 0.020, 1)     # ocean
+base_mix.inputs["B"].default_value = (0.020, 0.024, 0.028, 1)     # land
 nb.link(base_mix.outputs["Result"], bsdf.inputs["Base Color"])
 rmap = nb.node("ShaderNodeMapRange", **{"To Min": 0.22, "To Max": 0.8})
 nb.link(landf, rmap.inputs["Value"])
@@ -211,7 +211,7 @@ nb.link(city_e.outputs[0], add.inputs[1])
 nb.link(add.outputs[0], out.inputs["Surface"])
 lib.assign(planet, mat, smooth=True)
 
-# ------------------------------------------------------------------ 대기 림 (발광 껍질)
+# ------------------------------------------------------------------ atmosphere rim (emissive shell)
 RA = R * 1.022
 bpy.ops.mesh.primitive_uv_sphere_add(radius=RA, segments=512, ring_count=256, location=(0, 0, -R))
 atmo = bpy.context.active_object
@@ -225,11 +225,11 @@ atmo.visible_shadow = False
 mat, nb, out = new_mat("Atmosphere")
 geo = nb.node("ShaderNodeNewGeometry")
 c = nb.math("ABSOLUTE", nb.vmath("DOT_PRODUCT", geo.outputs["Normal"], geo.outputs["Incoming"]))
-C0 = math.sqrt(1 - (R / RA) ** 2)                                  # 행성 가장자리를 스치는 광선의 입사각 cos
-outer = nb.math("POWER", nb.math("DIVIDE", c, C0, clamp=True), 2.2)   # 바깥으로 갈수록 0
+C0 = math.sqrt(1 - (R / RA) ** 2)                                  # cos of the incidence angle of a ray grazing the planet edge
+outer = nb.math("POWER", nb.math("DIVIDE", c, C0, clamp=True), 2.2)   # falls to 0 outward
 inner = nb.math("EXPONENT", nb.math("MULTIPLY", nb.math("MAXIMUM", nb.math("SUBTRACT", c, C0), 0.0), -26.0))
 glow = nb.math("MULTIPLY", outer, inner)
-# 태양 쪽(왼쪽)은 따뜻하게, 반대쪽은 시안
+# warm on the sun side (left), cyan on the opposite side
 sun_dot = nb.vmath("DOT_PRODUCT", geo.outputs["Normal"], tuple(SUN_DIR))
 warm = nb.node("ShaderNodeMapRange", **{"From Min": 0.1, "From Max": 0.75})
 nb.link(sun_dot, warm.inputs["Value"])
@@ -238,16 +238,16 @@ cmix.data_type = "RGBA"
 nb.link(warm.outputs[0], cmix.inputs["Factor"])
 cmix.inputs["A"].default_value = (0.12, 0.42, 1.0, 1)
 cmix.inputs["B"].default_value = (1.0, 0.62, 0.32, 1)
-# 세기: 좌우는 밝게, 가운데(정면) 꼭대기는 은은하게 + 태양 쪽 보강
+# strength: bright at left/right, subtle at the centre (front) top + boost on the sun side
 sepn = nb.node("ShaderNodeSeparateXYZ")
 nb.link(geo.outputs["Normal"], sepn.inputs[0])
-sidek = nb.node("ShaderNodeMapRange", **{"From Min": 0.20, "From Max": 0.62, "To Min": 0.09, "To Max": 1.0})   # 가운데 림 띠 0.3 -> 0.09 (AgX 에서 루마 약 170 -> 100 이하)
+sidek = nb.node("ShaderNodeMapRange", **{"From Min": 0.20, "From Max": 0.62, "To Min": 0.09, "To Max": 1.0})   # centre rim band 0.3 -> 0.09 (AgX luma about 170 -> under 100)
 nb.link(nb.math("ABSOLUTE", sepn.outputs["X"]), sidek.inputs["Value"])
 strength = nb.math("MULTIPLY", nb.math("MULTIPLY", glow, sidek.outputs[0]),
                    nb.math("ADD", 1.6, nb.math("MULTIPLY", warm.outputs[0], 3.0)))
 em = nb.node("ShaderNodeEmission")
 nb.link(cmix.outputs["Result"], em.inputs["Color"])
-camray = nb.node("ShaderNodeLightPath").outputs["Is Camera Ray"]      # 행성을 비추지 않게 카메라에만
+camray = nb.node("ShaderNodeLightPath").outputs["Is Camera Ray"]      # camera only, so it does not light the planet
 nb.link(nb.math("MULTIPLY", strength, camray), em.inputs["Strength"])
 tr = nb.node("ShaderNodeBsdfTransparent")
 addz = nb.node("ShaderNodeAddShader")
@@ -256,19 +256,19 @@ nb.link(em.outputs[0], addz.inputs[1])
 nb.link(addz.outputs[0], out.inputs["Surface"])
 lib.assign(atmo, mat, smooth=True)
 
-# ------------------------------------------------------------------ 태양 (뒤에서 비추는 역광)
+# ------------------------------------------------------------------ sun (backlight from behind)
 sun = lib.add_sun("Sun", (0, 0, 0), energy=1.2, color=(0.85, 0.9, 1.0))
 sun.rotation_euler = (-SUN_DIR).to_track_quat("-Z", "Y").to_euler()
 sun.data.angle = math.radians(0.6)
 
-# ------------------------------------------------------------------ 엣지 노드 + 아크
+# ------------------------------------------------------------------ edge nodes + arcs
 def surf(dir_vec, lift=0.0):
-    """행성 로컬(중심 원점) 좌표에서 방향 -> 표면점."""
+    """Direction -> surface point in planet-local coordinates (origin at the centre)."""
     return dir_vec.normalized() * (R + lift)
 
 
 def dir_from(az_deg, dist):
-    """카메라 바로 아래 지점(행성 꼭대기)에서 방위 az(0=화면 정면, +=오른쪽), 표면 거리 dist(m)."""
+    """From the point directly below the camera (planet top): azimuth az (0 = straight ahead on screen, + = right), surface distance dist (m)."""
     ang = dist / R
     az = math.radians(az_deg)
     return Vector((math.sin(ang) * math.sin(az), math.sin(ang) * math.cos(az), math.cos(ang)))
@@ -298,7 +298,7 @@ for i, d in enumerate(nodes):
     o.location = p
     o.visible_shadow = False
 
-# 노드 쌍 고르기: 같은 쪽에서 7~26 m 떨어진 상대를 노드마다 하나씩 무작위로 (가장 가까운 이웃만 보면 쌍이 거의 안 나온다)
+# Picking node pairs: for each node, one random partner 7-26 m away on the same side (looking only at the nearest neighbour yields almost no pairs)
 pairs = []
 for i, a in enumerate(nodes):
     cands = [j for j, b in enumerate(nodes)
@@ -307,7 +307,7 @@ for i, a in enumerate(nodes):
     if cands:
         pairs.append((i, rng.choice(cands)))
 rng.shuffle(pairs)
-pairs = ([p for p in pairs if nodes[p[0]].x < 0][:6]         # 좌우 6개씩: 배너라 너무 붐비지 않게
+pairs = ([p for p in pairs if nodes[p[0]].x < 0][:6]         # 6 per side: keeps the banner from getting too crowded
          + [p for p in pairs if nodes[p[0]].x > 0][:6])
 print(f"[cdn_planet] arcs: {len(pairs)}")
 
@@ -319,8 +319,8 @@ def build_arcs(pairs, radius, name, segs=64, ring=6):
         a, b = nodes[i], nodes[j]
         span = (surf(a) - surf(b)).length
         hgt = 0.24 * span + 0.6
-        rng.random()                                    # (난수 순서 유지)
-        # 위상을 0..1 에 고르게 흩는다: k*5 mod n 은 n=12 에서 순열 -> 좌/우 각각에서도 발사 시점이 고르게 퍼진다
+        rng.random()                                    # (preserve random-number order)
+        # spread phases evenly over 0..1: k*5 mod n is a permutation for n=12 -> launch times are spread evenly on each of the left/right sides too
         n_arc = len(pairs)
         phase = (((k * 5) % n_arc) + 0.5) / n_arc if n_arc % 5 else (k + 0.5) / n_arc
         rings = []
@@ -346,7 +346,7 @@ def build_arcs(pairs, radius, name, segs=64, ring=6):
                 for loop in f.loops:
                     vi = loop.vert
                     ss = s + (1 if vi in verts[s + 1] else 0)
-                    loop[uv].uv = (ss / segs, phase + k * 0.0)   # u=호를 따라, v=개별 위상
+                    loop[uv].uv = (ss / segs, phase + k * 0.0)   # u = along the arc, v = per-arc phase
     me = bpy.data.meshes.new(name)
     bm.to_mesh(me)
     bm.free()
@@ -366,7 +366,7 @@ def arc_material(name, core):
     nb.link(uvn.outputs[0], sep.inputs[0])
     u, ph = sep.outputs["X"], sep.outputs["Y"]
     t = time_socket(nb)
-    # 각 아크는 150프레임에 1번 발사 (정수 주기) - 머리 위치 head = fract(t + phase)*1.5 - 0.1
+    # each arc fires once per 150 frames (integer period) - head position head = fract(t + phase)*1.5 - 0.1
     head = nb.math("SUBTRACT", nb.math("MULTIPLY", nb.math("FRACT", nb.math("ADD", nb.math("MULTIPLY", t, 1.0), ph)), 1.5), 0.1)
     d = nb.math("SUBTRACT", head, u)
     a = nb.math("SUBTRACT", 1.0, nb.math("DIVIDE", d, 0.42), clamp=True)
@@ -398,13 +398,13 @@ halo = build_arcs(pairs, 0.16, "ArcHalo", ring=10)
 core.data.materials.append(arc_material("Arc Core", True))
 halo.data.materials.append(arc_material("Arc Halo", False))
 
-# ------------------------------------------------------------------ 루프: 행성 사인 흔들림 (끝=처음)
+# ------------------------------------------------------------------ loop: planet sine sway (end = start)
 SWAY = math.radians(1.2)
-fc = planet_root.driver_add("rotation_euler", 1)     # 드라이버 (키프레임은 5.2 에서 ease 가 걸린다)
+fc = planet_root.driver_add("rotation_euler", 1)     # driver (keyframes get eased in 5.2)
 fc.driver.type = "SCRIPTED"
 fc.driver.expression = f"{SWAY}*sin(2*pi*(frame-1)/{N_FRAMES})"
 
-# ------------------------------------------------------------------ 카메라
+# ------------------------------------------------------------------ camera
 cam_data = bpy.data.cameras.new("Cam")
 cam_data.sensor_fit = "HORIZONTAL"
 cam_data.sensor_width = 36
@@ -418,7 +418,7 @@ cam.rotation_euler = (math.radians(90 - dip + 4.6), 0, 0)
 scene.camera = cam
 
 
-# ------------------------------------------------------------------ 컴포지터: 은은한 번짐
+# ------------------------------------------------------------------ compositor: subtle bloom
 def add_bloom(strength=0.5, threshold=0.7, size=0.75):
     try:
         ng = bpy.data.node_groups.new("Comp", "CompositorNodeTree")
@@ -436,7 +436,7 @@ def add_bloom(strength=0.5, threshold=0.7, size=0.75):
         scene.compositing_node_group = ng
         scene.render.use_compositing = True
     except Exception as e:  # noqa: BLE001
-        print(f"[cdn_planet] bloom 건너뜀: {e}")
+        print(f"[cdn_planet] bloom skipped: {e}")
 
 
 add_bloom()
@@ -444,6 +444,6 @@ if args.still is None and (args.start or args.end):
     scene.frame_start = args.start or 1
     scene.frame_end = args.end or N_FRAMES
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
-    bpy.ops.render.render(animation=True)      # 청크: 인코딩은 다 모은 뒤 따로
+    bpy.ops.render.render(animation=True)      # chunked: encode separately after collecting all chunks
 else:
     lib.render(args)

@@ -1,13 +1,13 @@
-"""컨셉 10: 데이터센터 천장의 사다리형 케이블 트레이를 올려다보는 샷 (히어로 배너 루프).
+"""Concept 10: looking up at ladder-type cable trays on a data-center ceiling (hero banner loop).
 
-트레이(사다리형: 양쪽 레일 + 가로 렁)가 화면 좌우에서 원근으로 깊이 빠지고, 정리된 케이블 다발은 대부분 어둡게,
-아쿠아 광케이블을 따라 작은 빛 펄스가 흐른다. 화면 양 끝 바깥 낮은 트레이에는 노란(싱글모드) 광점퍼 다발과
-앰버 펄스(카메라에서 멀어지면 꺼져서 가운데 40% 안으로는 들어오지 않는다). 천장은 격자 보(와플 슬래브)와
-나사봉 행거로 '올려다보는 천장'임을 알려 주고, 가운데는 어둡게 비운다.
+Trays (ladder type: two side rails + cross rungs) recede in perspective on both sides of the frame; the tidy cable bundles
+are mostly dark, and small light pulses run along the aqua fiber cables. The low outer trays at both frame edges carry yellow
+(single-mode) fiber jumper bundles with amber pulses (they fade out away from the camera, so they never enter the central 40%).
+The ceiling (coffered waffle slab with threaded-rod hangers) conveys 'looking up at a ceiling', and the centre is kept dark and empty.
 
-속도: 지오메트리는 행거 한 칸(SUP) 분량의 메시 하나만 파이썬으로 만들고 Array 모디파이어로 반복한다
-(오브젝트 1개). 모든 형상/텍스처가 SUP 주기라 루프가 정확하다.
-루프(5초): 카메라가 SUP(=1.2m)만큼 선형 전진. 펄스는 공간 주기 L, 속도 v 에서 (v*T - SUP)/L 이 정수.
+Speed: geometry is a single mesh covering one hanger bay (SUP), built in Python and repeated with an Array modifier
+(1 object). Every shape/texture has period SUP, so the loop is exact.
+Loop (5 s): the camera advances linearly by SUP (=1.2 m). Pulses have spatial period L and speed v such that (v*T - SUP)/L is an integer.
 """
 import math
 import os
@@ -22,25 +22,25 @@ import lib  # noqa: E402
 
 
 def _extra(p):
-    p.add_argument("--start", type=int, default=None, help="애니메이션 시작 프레임 (청크 렌더)")
-    p.add_argument("--end", type=int, default=None, help="애니메이션 끝 프레임 (청크 렌더)")
+    p.add_argument("--start", type=int, default=None, help="animation start frame (chunked render)")
+    p.add_argument("--end", type=int, default=None, help="animation end frame (chunked render)")
     p.add_argument("--spp", type=int, default=None)
     p.add_argument("--seed", type=int, default=0)
-    p.add_argument("--size", default="1920x540", help="예: 3840x1080")
+    p.add_argument("--size", default="1920x540", help="e.g. 3840x1080")
 
 
 args = lib.parse_args("concept_cable_trays", frames=150, engine="cycles", extra=_extra)
 scene = lib.reset_scene()
 lib.setup_render(scene, args)
 scene.render.resolution_x, scene.render.resolution_y = (int(v) for v in args.size.split("x"))
-scene.render.resolution_percentage = 100          # 미리보기도 1920x540 그대로
+scene.render.resolution_percentage = 100          # keep 1920x540 for previews too
 if args.engine == "cycles":
     scene.cycles.samples = args.spp or 128
     scene.cycles.use_adaptive_sampling = True
     scene.cycles.adaptive_threshold = 0.01
     scene.cycles.max_bounces = 5
     scene.cycles.seed = args.seed
-    scene.render.use_persistent_data = True       # 카메라만 움직이므로 BVH 재사용
+    scene.render.use_persistent_data = True       # only the camera moves, so reuse the BVH
 scene.view_settings.view_transform = "AgX"
 for look in ("AgX - Medium High Contrast", "Medium High Contrast"):
     try:
@@ -55,23 +55,23 @@ FPS = args.fps
 T = N / FPS
 rng = random.Random(10)
 
-SUP = 1.2                       # 트레이 지지대(행거) 간격 = 루프 이동 거리 = 타일 길이
-RUNG = 0.3                      # 사다리 렁 간격 (SUP 의 약수)
-Y0 = -6.0                       # SUP 의 정수배
-COUNT = 55                      # 타일 반복 수 (66 m)
+SUP = 1.2                       # tray support (hanger) spacing = loop travel distance = tile length
+RUNG = 0.3                      # ladder rung spacing (divisor of SUP)
+Y0 = -6.0                       # integer multiple of SUP
+COUNT = 55                      # tile repeat count (66 m)
 CEIL = 4.6
-PULSE_L = 3 * SUP               # 아쿠아 펄스 공간 주기
+PULSE_L = 3 * SUP               # aqua pulse spatial period
 PULSE_V = 7 * SUP / T           # (v*T - SUP)/L = 6*SUP/(3*SUP) = 2
-AMBER_L = 2 * SUP               # 앰버 펄스는 조금 느리게
+AMBER_L = 2 * SUP               # amber pulses are a little slower
 AMBER_V = 5 * SUP / T           # (5-1)*SUP/(2*SUP) = 2
-CAM_Y = f"({SUP}*(frame-1)/{N})"   # 카메라 y (드라이버 식)
+CAM_Y = f"({SUP}*(frame-1)/{N})"   # camera y (driver expression)
 
 M = lib.make_pbr
-# 트레이/케이블 알베도는 리뷰 뒤 약 30% 낮췄다 (양옆 트레이가 문구보다 밝게 튀지 않도록)
+# Tray/cable albedo was lowered ~30% after review (so the side trays do not pop brighter than the headline)
 steel = M("Tray Steel", (0.14, 0.147, 0.161, 1), metallic=1.0, roughness=0.4)
 strut = M("Strut", (0.126, 0.133, 0.14, 1), metallic=1.0, roughness=0.4)
 rod_mat = M("Rod", (0.3, 0.3, 0.31, 1), metallic=1.0, roughness=0.3)
-# 타일 1.2 m = SUP 이라 콘크리트 무늬도 루프 주기와 맞는다
+# The tile is 1.2 m = SUP, so the concrete pattern also matches the loop period
 slab = lib.make_tiled_pbr("Ceiling Slab", "concrete_wall_007", tile=SUP, tint=(0.03, 0.033, 0.042, 1))
 blk = [M("Cable Black", (0.0084, 0.0084, 0.0098, 1), roughness=0.45),
        M("Cable Charcoal", (0.021, 0.0224, 0.0252, 1), roughness=0.5),
@@ -79,10 +79,10 @@ blk = [M("Cable Black", (0.0084, 0.0084, 0.0098, 1), roughness=0.45),
 
 
 def make_fiber(name, base, glow, strength, offset, L, V, idle=0.03, near_only=False, far_fade=None):
-    """광케이블: 기본은 은은한 색, 월드 y 를 따라 흐르는 짧은 펄스(앞이 밝고 뒤로 꼬리).
+    """Fiber cable: subtle base colour plus a short pulse flowing along world y (bright head, trailing tail).
 
-    near_only: 카메라에서 4~8 m 사이에서 발광이 꺼진다 (멀리서 화면 가운데로 모이는 구간에 색이 안 남게).
-    far_fade=(d0, d1, floor): 카메라에서 d0~d1 m 사이에서 발광이 floor 배까지 줄어든다 (문구 자리로 들어가는 먼 펄스를 가라앉힌다).
+    near_only: emission fades out between 4 and 8 m from the camera (so no colour remains where distant cables converge on the centre).
+    far_fade=(d0, d1, floor): emission falls to floor x between d0 and d1 m from the camera (calms distant pulses entering the headline area).
     """
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
@@ -118,10 +118,10 @@ def make_fiber(name, base, glow, strength, offset, L, V, idle=0.03, near_only=Fa
     links.new(geo.outputs["Position"], sep.inputs[0])
     y = sep.outputs["Y"]
     t = drv(f"frame/{FPS}")
-    # u in [0,1): 펄스 머리에서 뒤로 잰 거리 / L
+    # u in [0,1): distance back from the pulse head / L
     u = m("FRACT", m("DIVIDE", m("SUBTRACT", m("ADD", m("MULTIPLY", t, V), offset), y), L))
-    tail = m("POWER", m("SUBTRACT", 1.0, m("MINIMUM", m("DIVIDE", u, 0.22), 1.0)), 3.0)   # 꼬리 = 0.22*L
-    head = m("LESS_THAN", u, 0.985)   # 머리 앞은 바로 꺼짐
+    tail = m("POWER", m("SUBTRACT", 1.0, m("MINIMUM", m("DIVIDE", u, 0.22), 1.0)), 3.0)   # tail = 0.22*L
+    head = m("LESS_THAN", u, 0.985)   # cuts off sharply ahead of the head
     e = m("ADD", idle, m("MULTIPLY", m("MULTIPLY", tail, head), strength))
     if near_only:
         d = m("SUBTRACT", y, drv(CAM_Y))
@@ -135,8 +135,8 @@ def make_fiber(name, base, glow, strength, offset, L, V, idle=0.03, near_only=Fa
     return mat
 
 
-# 펄스 세기를 리뷰 뒤 낮췄다 (머리가 하얗게 타지 않고 색이 남도록). 0.6배로는 AgX 에서 여전히 흰색으로 타서
-# 아쿠아는 0.15배 + 발광색을 더 짙게, 앰버는 0.4배. 아쿠아는 멀어질수록(= 화면 가운데로 갈수록) 더 줄인다
+# Pulse strength was lowered after review (so the head does not burn to white and keeps its colour). At 0.6x it still burned to white in AgX,
+# so aqua is 0.15x with a deeper emission colour, amber 0.4x. Aqua is reduced further with distance (= toward the frame centre)
 PULSE_GAIN = float(os.environ.get("TRAYS_PULSE_GAIN", 0.15))
 AMBER_GAIN = float(os.environ.get("TRAYS_AMBER_GAIN", 0.4))
 aqua = [make_fiber(f"Fiber Aqua {k}", (0.02, 0.22, 0.25, 1), (0.1, 0.85, 1.0), 40.0 * PULSE_GAIN, k * 1.37, PULSE_L, PULSE_V,
@@ -145,7 +145,7 @@ amber = [make_fiber(f"Fiber Amber {k}", (0.5, 0.2, 0.01, 1), (1.0, 0.42, 0.05), 
                     idle=0.05, near_only=True) for k in range(3)]
 
 
-# ------------------------------------------------------------------ 타일 메시 빌더 (오브젝트 1개)
+# ------------------------------------------------------------------ tile mesh builder (1 object)
 class Builder:
     def __init__(self):
         self.verts, self.faces, self.mat_idx, self.smooth, self.mats = [], [], [], [], []
@@ -169,7 +169,7 @@ class Builder:
             self.smooth.append(False)
 
     def tube(self, pts, r, mat, n=8, vertical=False):
-        """pts 를 따라가는 관. vertical=False 면 y 방향(단면 xz), True 면 z 방향(단면 xy)."""
+        """Tube along pts. vertical=False runs along y (cross-section in xz); True runs along z (cross-section in xy)."""
         b = len(self.verts)
         for (x, y, z) in pts:
             for j in range(n):
@@ -201,13 +201,13 @@ class Builder:
 
 
 B = Builder()
-SEG = 16                        # 케이블 한 타일의 분할 수 (렁 사이 4분할)
+SEG = 16                        # subdivisions per cable tile (4 per rung bay)
 
 
 def cable_bundle(x, z, width, n_rows, mats, r=0.012, wander=0.006, sag=0.006):
-    """트레이 바닥(z)에 놓인 케이블 다발. 3~5 가닥씩 묶음으로 나눠 묶음마다 굵기/좌우 흔들림/처짐을 다르게 준다.
+    """Cable bundle on the tray floor (z). Split into groups of 3-5 strands; each group gets different thickness / sideways wander / sag.
 
-    흔들림은 SUP 주기(행거마다 타이로 묶인 느낌), 처짐은 렁 사이(RUNG 주기)라 타일이 이음매 없이 이어진다.
+    Wander has period SUP (feels tied with a tie at each hanger) and sag is between rungs (period RUNG), so tiles join seamlessly.
     """
     left = x - width / 2
     while left < x + width / 2 - 2 * r:
@@ -245,26 +245,26 @@ def ladder_tray(x, z, w, rail_h=0.1):
 
 
 def support(x0, x1, z):
-    """트래피즈 행거 (타일 y=0.6... 가 아니라 y=SUP/2 에 둔다: 타일 경계와 겹치지 않게).
+    """Trapeze hanger (placed at y=SUP/2 rather than the tile's y=0.6...: so it does not overlap the tile boundary).
 
-    천장 앵커 플레이트에서 내려온 나사봉 2개 + 너트 + 아래 C 형강.
+    Two threaded rods descending from the ceiling anchor plate + nuts + a C-channel below.
     """
     y = SUP / 2
     B.box((x1 - x0 + 0.14, 0.042, 0.042), ((x0 + x1) / 2, y, z - 0.021), strut)
     for xr in (x0 - 0.045, x1 + 0.045):
         B.tube([(xr, y, z - 0.07), (xr, y, CEIL)], 0.007, rod_mat, n=6, vertical=True)
-        B.box((0.024, 0.024, 0.012), (xr, y, z - 0.05), rod_mat)       # 아래 너트
-        B.box((0.024, 0.024, 0.012), (xr, y, z + 0.006), rod_mat)      # 위 너트
-        B.box((0.07, 0.07, 0.008), (xr, y, CEIL - 0.004), strut)       # 천장 앵커 플레이트
+        B.box((0.024, 0.024, 0.012), (xr, y, z - 0.05), rod_mat)       # lower nut
+        B.box((0.024, 0.024, 0.012), (xr, y, z + 0.006), rod_mat)      # upper nut
+        B.box((0.07, 0.07, 0.008), (xr, y, CEIL - 0.004), strut)       # ceiling anchor plate
 
 
-# 트레이 배치: (x 중심, 높이, 폭, 케이블 종류). 가운데(|x|<1.2)는 비워 둔다
+# Tray layout: (x centre, height, width, cable kind). The centre (|x|<1.2) is left empty
 TRAYS = [
     (-2.6, 3.05, 0.6, "power"),
     (-1.55, 3.45, 0.45, "fiber"),
     (1.55, 3.45, 0.45, "fiber"),
     (2.6, 3.05, 0.6, "power"),
-    (-3.3, 2.8, 0.36, "amber"),      # 화면 양 끝 바깥 낮은 트레이: 노란 광점퍼 + 앰버 펄스
+    (-3.3, 2.8, 0.36, "amber"),      # low outer trays at the frame edges: yellow fiber jumpers + amber pulses
     (3.3, 2.8, 0.36, "amber"),
 ]
 for x, z, w, kind in TRAYS:
@@ -278,14 +278,14 @@ for x, z, w, kind in TRAYS:
         cable_bundle(x, z + 0.02, w - 0.05, 2, amber + amber + [blk[1]], r=0.0065, wander=0.004, sag=0.005)
     support(x - w / 2, x + w / 2, z)
 
-# 천장: 슬래브 + 격자 보(와플). 보는 타일마다 가로 1개(y=SUP/2 = 행거 줄), 세로는 1.5 m 간격
+# Ceiling: slab + coffered beams (waffle). One cross beam per tile (y=SUP/2 = hanger line), longitudinal beams every 1.5 m
 B.box((16, SUP, 0.3), (0, SUP / 2, CEIL + 0.15 + 0.22), slab)
 B.box((16, 0.16, 0.22), (0, SUP / 2, CEIL + 0.11), slab)
 for i in range(-5, 6):
     xr = (i + 0.5) * 1.5
-    if abs(xr) < 2.0:            # 가운데는 가로 보만 남겨 조용하게
+    if abs(xr) < 2.0:            # keep only the cross beam in the centre for calm
         continue
-    B.box((0.16, SUP, 0.2), (xr, SUP / 2, CEIL + 0.12), slab)   # 가로 보보다 살짝 얕게(겹친 면 방지)
+    B.box((0.16, SUP, 0.2), (xr, SUP / 2, CEIL + 0.12), slab)   # slightly shallower than the cross beam (avoids overlapping faces)
 
 tile = B.build("Tray Tile")
 tile.location = (0, Y0, 0)
@@ -298,7 +298,7 @@ arr.use_merge_vertices = True
 arr.merge_threshold = 0.0002
 print(f"[cable_trays] tile verts={len(B.verts)} faces={len(B.faces)} x{COUNT}")
 
-# ------------------------------------------------------------------ 조명 (전부 카메라에 안 보이는 면광원)
+# ------------------------------------------------------------------ lighting (all area lights hidden from the camera)
 LEN, CY = COUNT * SUP, Y0 + COUNT * SUP / 2
 
 
@@ -318,10 +318,10 @@ def strip(name, loc, roll_deg, energy, color, size=0.3, length=LEN, parent=None)
 
 COOL = (0.62, 0.8, 1.0)
 for sx in (-1, 1):
-    strip("Side Fill", (sx * 2.95, CY, 2.2), 180, 1000, COOL)                  # 위(트레이 밑면/천장)를 비춘다
+    strip("Side Fill", (sx * 2.95, CY, 2.2), 180, 1000, COOL)                  # lights upward (tray undersides / ceiling)
     strip("Inner Fill", (sx * 2.1, CY, 2.0), 180 - 25 * sx, 420, COOL)
 
-# ------------------------------------------------------------------ 카메라: 위로 올려다보며 전진
+# ------------------------------------------------------------------ camera: advance while looking up
 rig = bpy.data.objects.new("Rig", None)
 bpy.context.collection.objects.link(rig)
 cam_data = bpy.data.cameras.new("Camera")
@@ -336,18 +336,18 @@ cam.rotation_euler = (math.radians(90 + 26), 0, 0)
 cam_data.dof.use_dof = True
 cam_data.dof.focus_distance = 4.0
 cam_data.dof.aperture_fstop = 4.0
-# 앰버 스필: 바깥 트레이 아래의 따뜻한 빛. 카메라와 같이 움직이는 짧은 띠라 먼 곳(=화면 가운데)은 물들지 않는다
+# Amber spill: warm light under the outer trays. It is a short strip that moves with the camera, so the far area (= frame centre) is not tinted
 for sx in (-1, 1):
     strip("Amber Spill", (sx * 3.45, 2.5, 2.35), 180 + 12 * sx, 40, (1.0, 0.45, 0.1), size=0.25, length=6.0, parent=rig)
-# 선형 전진은 드라이버로 준다. (Blender 5.2 에서는 lib.set_default_interpolation("LINEAR") 가 먹지 않아
-# 키프레임이 베지어 ease-in/out 이 되고, 루프 이음매에서 카메라가 멈췄다 가는 것처럼 보인다.)
+# Linear advance is done with a driver. (In Blender 5.2 lib.set_default_interpolation("LINEAR") has no effect, so
+# keyframes become Bezier ease-in/out and the camera appears to stop at the loop seam.)
 fc = rig.driver_add("location", 1)
 fc.driver.type = "SCRIPTED"
 fc.driver.expression = CAM_Y
 
 
 
-# ------------------------------------------------------------------ 컴포지터: 약한 거리 페이드 (먼 케이블 줄무늬의 계단/모아레를 가라앉힌다)
+# ------------------------------------------------------------------ compositor: light distance fade (calms stair-stepping/moire of distant cable stripes)
 def add_distance_fade(start=4.0, depth=9.0, amount=0.65, fog=(0.004, 0.006, 0.012)):
     try:
         scene.view_layers[0].use_pass_mist = True
@@ -364,7 +364,7 @@ def add_distance_fade(start=4.0, depth=9.0, amount=0.65, fog=(0.004, 0.006, 0.01
         mix = ng.nodes.new("ShaderNodeMix")
         mix.data_type = "RGBA"
         mix.blend_type = "MIX"
-        col_in = [i for i in mix.inputs if i.type == "RGBA"]       # 같은 이름 소켓이 타입별로 있어 타입으로 고른다
+        col_in = [i for i in mix.inputs if i.type == "RGBA"]       # same-named sockets exist per type, so pick by type
         col_out = [o for o in mix.outputs if o.type == "RGBA"][0]
         ng.links.new(mul.outputs[0], mix.inputs[0])
         ng.links.new(rl.outputs["Image"], col_in[0])
@@ -374,7 +374,7 @@ def add_distance_fade(start=4.0, depth=9.0, amount=0.65, fog=(0.004, 0.006, 0.01
         scene.compositing_node_group = ng
         scene.render.use_compositing = True
     except Exception as e:  # noqa: BLE001
-        print(f"[cable_trays] distance fade 건너뜀: {e}")
+        print(f"[cable_trays] distance fade skipped: {e}")
 
 
 if not os.environ.get("TRAYS_NO_FADE"):
@@ -384,6 +384,6 @@ if args.still is None and (args.start or args.end):
     scene.frame_start = args.start or 1
     scene.frame_end = args.end or N
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
-    bpy.ops.render.render(animation=True)      # 청크: 인코딩은 다 모은 뒤 따로
+    bpy.ops.render.render(animation=True)      # chunked: encode separately after collecting all chunks
 else:
     lib.render(args)

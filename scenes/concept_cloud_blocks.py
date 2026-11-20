@@ -1,8 +1,8 @@
-"""컨셉 05 클라우드 블록: 어두운 볼류메트릭 공간에 반투명(서리 유리) 큐브가 떠 있고, 일부는 격자로 정렬된다.
+"""Concept 05 cloud blocks: translucent (frosted glass) cubes float in a dark volumetric space, and some are aligned into a grid.
 
-32:9 배너용 (1920x540). 가운데 40% 는 비워 두고 좌우에 디테일을 둔다.
-루프(기본 150프레임=5초): 떠 있는 큐브는 정수 주기의 sin/cos 궤도로 흔들리고,
-들어오는 중인 큐브는 빈 칸 쪽으로 다가갔다 물러난다(전부 frame 드라이버) -> 마지막 프레임 다음이 첫 프레임과 같다.
+For the 32:9 banner (1920x540). The central 40% is left empty and the detail sits on the left and right.
+Loop (default 150 frames = 5 s): floating cubes sway on sin/cos orbits with integer periods,
+and incoming cubes approach an empty slot and pull back (all frame drivers) -> the frame after the last one equals the first.
 """
 import math
 import os
@@ -18,11 +18,11 @@ import lib  # noqa: E402
 
 
 def _extra(p):
-    p.add_argument("--start", type=int, default=None, help="애니메이션 시작 프레임 (청크 렌더)")
-    p.add_argument("--end", type=int, default=None, help="애니메이션 끝 프레임 (청크 렌더)")
+    p.add_argument("--start", type=int, default=None, help="animation start frame (chunked render)")
+    p.add_argument("--end", type=int, default=None, help="animation end frame (chunked render)")
     p.add_argument("--spp", type=int, default=None)
-    p.add_argument("--size", default="1920x540", help="예: 960x270 (드래프트), 3840x1080")
-    p.add_argument("--draft", action="store_true", help="빠른 드래프트: 낮은 샘플/바운스 + 적응 샘플링 + GPU 디노이즈")
+    p.add_argument("--size", default="1920x540", help="e.g. 960x270 (draft), 3840x1080")
+    p.add_argument("--draft", action="store_true", help="fast draft: low samples/bounces + adaptive sampling + GPU denoise")
 
 
 args = lib.parse_args("concept_cloud_blocks", frames=150, engine="cycles", extra=_extra)
@@ -32,7 +32,7 @@ scene.render.resolution_x, scene.render.resolution_y = (int(v) for v in args.siz
 if args.engine == "cycles":
     scene.cycles.samples = args.spp or (48 if args.preview else 160)
     scene.cycles.seed = 0
-    scene.cycles.use_animated_seed = False        # 루프: 노이즈 패턴 고정
+    scene.cycles.use_animated_seed = False        # loop: fixed noise pattern
     scene.render.use_persistent_data = True
     scene.cycles.max_bounces = 10
     scene.cycles.transmission_bounces = 10
@@ -47,7 +47,7 @@ if args.engine == "cycles":
         scene.cycles.transmission_bounces = 4
         scene.cycles.glossy_bounces = 3
         scene.cycles.diffuse_bounces = 2
-        scene.cycles.sample_clamp_indirect = 3.0      # 10 은 굴절 역광이 하얗게 날아가서 원래 값 유지
+        scene.cycles.sample_clamp_indirect = 3.0      # keep the original value, since 10 blows refracted backlight out to white
         try:
             scene.cycles.denoising_use_gpu = True
         except AttributeError:
@@ -63,7 +63,7 @@ for look in ("AgX - Medium High Contrast", "Medium High Contrast"):
 N = args.frames
 rng = random.Random(11)
 
-# ------------------------------------------------------------------ 월드: 깊은 남색 + 옅은 안개
+# ------------------------------------------------------------------ world: deep navy + light fog
 lib.set_world(color=(0.004, 0.007, 0.014, 1.0), strength=1.0)
 wnt = scene.world.node_tree
 fog = wnt.nodes.new("ShaderNodeVolumeScatter")
@@ -73,7 +73,7 @@ fog.inputs["Color"].default_value = (0.7, 0.85, 1.0, 1.0)
 wnt.links.new(fog.outputs["Volume"], wnt.nodes["World Output"].inputs["Volume"])
 
 
-# ------------------------------------------------------------------ 재질
+# ------------------------------------------------------------------ materials
 def glass(name, tint, rough):
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
@@ -101,15 +101,15 @@ def emit(name, color, strength):
 
 frost = glass("Frost", (0.50, 0.62, 0.80, 1), 0.28)
 frost_clear = glass("Frost Clear", (0.55, 0.68, 0.85, 1), 0.1)
-edge_c = emit("Edge Cyan", (0.12, 0.48, 1.0), 2.3)     # 3.2 -> 2.3: AI 업스케일에서 밝은 모서리가 번지지 않게
+edge_c = emit("Edge Cyan", (0.12, 0.48, 1.0), 2.3)     # 3.2 -> 2.3: keeps bright edges from bleeding in the AI upscale
 edge_dim = emit("Edge Dim", (0.12, 0.42, 1.0), 1.1)
-core_c = emit("Core Cyan", (0.30, 0.62, 1.0), 1.5)     # 3.0 -> 1.5: 흰 면(코어) 밝기 낮춤
-edge_far = emit("Edge Far", (0.10, 0.36, 0.9), 0.15)     # 가운데 뒤쪽 어두운 큐브용
+core_c = emit("Core Cyan", (0.30, 0.62, 1.0), 1.5)     # 3.0 -> 1.5: lowers the brightness of the white face (core)
+edge_far = emit("Edge Far", (0.10, 0.36, 0.9), 0.15)     # for the dark cubes behind the centre
 core_w = emit("Core Warm", (1.0, 0.58, 0.28), 1.9)
 
 
 def make_cube(name, size, loc, rot, mat=frost, edge=edge_dim, core=None):
-    """서리 유리 큐브 + 모서리 발광(와이어프레임) + (선택) 안쪽 발광 코어."""
+    """Frosted glass cube + edge glow (wireframe) + (optional) inner glowing core."""
     root = lib.group(name, loc)
     root.rotation_euler = rot
     c = lib.box(name + " Glass", (size,) * 3, (0, 0, 0), mat, parent=root, bevel=size * 0.04)
@@ -130,7 +130,7 @@ def make_cube(name, size, loc, rot, mat=frost, edge=edge_dim, core=None):
     return root
 
 
-# ------------------------------------------------------------------ 카메라 (+y 를 본다)
+# ------------------------------------------------------------------ camera (looks along +y)
 cam_data = bpy.data.cameras.new("Camera")
 cam_data.lens = 35
 cam_data.sensor_width = 36
@@ -142,12 +142,12 @@ cam_data.dof.use_dof = True
 cam_data.dof.focus_distance = 10.5
 cam_data.dof.aperture_fstop = 2.2
 
-HALF = 18 / 35  # 깊이 d 에서 화면 반폭 = d*HALF, 반높이 = d*HALF*540/1920
+HALF = 18 / 35  # at depth d the screen half-width = d*HALF, half-height = d*HALF*540/1920
 
 floaters = []   # (obj, base_loc, base_rot, amp, phase)
 incoming = []   # (obj, slot_loc, start_loc, start_rot)
 
-# ------------------------------------------------------------------ 오른쪽: 정렬된 격자 (4x3x2), 몇 칸은 비어 있고 큐브가 들어오는 중
+# ------------------------------------------------------------------ right: aligned grid (4x3x2), a few slots empty with cubes moving in
 GRID_S, GAP = 0.42, 0.07
 grid = lib.group("Grid", (4.1, 11.0, -0.05))
 grid.rotation_euler = (math.radians(8), 0, math.radians(-32))
@@ -164,7 +164,7 @@ for ix, iy, iz in cells:
     core = core_c if (ix, iy, iz) in {(1, 0, 1), (2, 1, 2)} else (core_w if (ix, iy, iz) == (3, 0, 0) else None)
     c = make_cube(f"G{ix}{iy}{iz}", GRID_S, p, (0, 0, 0), edge=edge_c if iy == 0 else edge_dim, core=core)
     c.parent = grid
-# 빈 칸으로 들어오는 중인 큐브 (격자 앞쪽에서 살짝 비껴 있음)
+# cubes moving into empty slots (slightly offset in front of the grid)
 for (ix, iz, iy), off in zip(sorted(empty_cells), [(-0.15, -0.55, 0.35), (0.5, -0.4, -0.2), (0.2, -0.9, 0.1)]):
     slot = ((ix - 1.5) * (GRID_S + GAP), (iy - 0.5) * (GRID_S + GAP), (iz - 1) * (GRID_S + GAP))
     p = (slot[0] + off[0], slot[1] + off[1], slot[2] + off[2])
@@ -173,7 +173,7 @@ for (ix, iz, iy), off in zip(sorted(empty_cells), [(-0.15, -0.55, 0.35), (0.5, -
     c.parent = grid
     incoming.append((c, slot, p, r0))
 
-# ------------------------------------------------------------------ 왼쪽: 작은 정렬 클러스터 (2x2x2, 하나 빠짐)
+# ------------------------------------------------------------------ left: small aligned cluster (2x2x2, one missing)
 clus = lib.group("Cluster", (-4.9, 12.5, 0.35))
 clus.rotation_euler = (math.radians(-6), 0, math.radians(28))
 S2 = 0.5
@@ -192,20 +192,20 @@ c.parent = clus
 incoming.append((c, (0.29, -0.29, 0.29), _p, _r))
 
 
-# ------------------------------------------------------------------ 떠다니는 큐브 (양쪽, 여러 깊이/크기)
+# ------------------------------------------------------------------ floating cubes (both sides, various depths/sizes)
 def side_x(d, lo, hi, side):
     return side * d * HALF * rng.uniform(lo, hi)
 
 
 specs = []
-# 앞쪽 큰 큐브 (초점 밖, 화면 가장자리에 걸침)
+# large foreground cubes (out of focus, straddling the frame edge)
 specs += [(-1, 5.0, 0.45, 0.93, 1.02, -0.09), (1, 5.4, 0.42, 0.95, 1.05, -0.1)]
-# 중간 깊이
+# mid depth
 for side in (-1, 1):
     for _ in range(5):
         d = rng.uniform(7.5, 14.0)
         specs.append((side, d, rng.uniform(0.25, 0.6), 0.52, 0.98, None))
-# 먼 작은 큐브 (안개 속 점)
+# small distant cubes (dots in the fog)
 for side in (-1, 1):
     for _ in range(9):
         d = rng.uniform(16.0, 30.0)
@@ -226,14 +226,14 @@ for k, (side, d, size, lo, hi, z) in enumerate(specs):
                     edge=edge_c if d < 15 and rng.random() < 0.5 else edge_dim, core=core)
     ph = rng.random() * math.tau
     if k == 0:
-        # 좌하단 앞쪽 큰 큐브는 화면 가장자리에서 잘려 보여서 뺀다 (난수 순서는 그대로 두어 나머지 배치 유지)
+        # the large foreground cube at lower left looks cut off at the frame edge, so it is dropped (random-number order is kept so the remaining layout stays the same)
         for ch in list(obj.children):
             bpy.data.objects.remove(ch, do_unlink=True)
         bpy.data.objects.remove(obj, do_unlink=True)
         continue
     floaters.append((obj, (x, d, zz), rot, 0.06 + 0.012 * d, ph))
 
-# 가운데 뒤쪽의 어둡고 흐린 큐브 3개 (림 조명 y=22 보다 뒤에 두어 직접광을 받지 않게): 모바일(16:10) 크롭이 빈 그라데이션이 되지 않게. 문구 자리라 루마 40 미만, 움직임도 작게.
+# 3 dark, dim cubes behind the centre (placed behind the rim lights at y=22 so they get no direct light): so the mobile (16:10) crop is not an empty gradient. It is the headline area, so luma stays under 40 and motion is small.
 rng2 = random.Random(5)
 for k, (fx, d, size, fz) in enumerate([(-0.36, 27.0, 1.6, 0.42), (0.40, 30.0, 1.8, -0.38), (-0.07, 35.0, 1.8, 0.50)]):
     x, zz = fx * d * HALF, fz * d * HALF * 540 / 1920
@@ -241,7 +241,7 @@ for k, (fx, d, size, fz) in enumerate([(-0.36, 27.0, 1.6, 0.42), (0.40, 30.0, 1.
     obj = make_cube(f"Far{k}", size, (x, d, zz), rot, mat=frost, edge=edge_far)
     floaters.append((obj, (x, d, zz), rot, 0.2, rng2.random() * math.tau))
 
-# ------------------------------------------------------------------ 조명: 좌우 뒤쪽 림(청), 낮은 따뜻한 보조, 위 소프트키
+# ------------------------------------------------------------------ lighting: left/right back rims (blue), low warm fill, soft key from above
 aim_l = lib.group("Aim L", (-4.5, 11.5, 0))
 aim_r = lib.group("Aim R", (4.5, 11.0, 0))
 for aim, x in ((aim_l, -6.5), (aim_r, 6.8)):
@@ -253,7 +253,7 @@ warm.visible_camera = False
 warm2 = lib.add_area_light("Warm L", (-9.0, 9.0, -3.0), aim_l, 140, size=3.0, color=(1.0, 0.62, 0.32))
 warm2.visible_camera = False
 
-# 아주 먼 배경 발광 판: 가장자리 쪽만 은은한 청색 (가운데는 어둡게)
+# very distant background glow panel: subtle blue only toward the edges (dark in the centre)
 bg_mat = bpy.data.materials.new("Backdrop")
 bg_mat.use_nodes = True
 nt = bg_mat.node_tree
@@ -289,9 +289,9 @@ bd.location = (0, 45, 0)
 bd.rotation_euler = (math.radians(90), 0, 0)
 lib.assign(bd, bg_mat, smooth=False)
 
-# ------------------------------------------------------------------ 루프 애니메이션
-# 전부 frame 의 드라이버 식(주기 N 프레임의 정수 배) -> N+1 프레임 = 1 프레임.
-# (Blender 5.2 에서는 lib.set_default_interpolation("LINEAR") 가 먹지 않아 키프레임 대신 드라이버를 쓴다.)
+# ------------------------------------------------------------------ loop animation
+# all are driver expressions of frame (integer multiples of the N-frame period) -> frame N+1 = frame 1.
+# (In Blender 5.2 lib.set_default_interpolation("LINEAR") has no effect, so drivers are used instead of keyframes.)
 W = f"{math.tau!r}*(frame-1)/{N}"
 
 
@@ -301,7 +301,7 @@ def drive(obj, path, idx, expr):
     fc.driver.expression = expr
 
 
-# 떠다니는 큐브: 작은 타원 궤도 + 미세한 흔들림
+# floating cubes: small elliptical orbit + slight jitter
 for obj, (x, y, z), rot, amp, ph in floaters:
     drive(obj, "location", 0, f"{x!r}+{amp * 0.6!r}*sin({W}+{ph!r})")
     drive(obj, "location", 1, f"{y!r}+{amp * 0.4!r}*cos({W}+{ph!r})")
@@ -310,7 +310,7 @@ for obj, (x, y, z), rot, amp, ph in floaters:
     drive(obj, "rotation_euler", 1, f"{rot[1]!r}+0.05*cos({W}+{ph!r})")
     drive(obj, "rotation_euler", 2, f"{rot[2]!r}+0.08*sin({W})")
 
-# 들어오는 중인 큐브: 슬롯 쪽으로 다가갔다(자세도 정렬 쪽으로) 다시 물러난다. s = 0.5-0.5cos -> 0..1..0, 주기 N
+# incoming cubes: approach the slot (orientation too, toward aligned) and pull back again. s = 0.5-0.5cos -> 0..1..0, period N
 for k, (obj, slot, loc0, rot0) in enumerate(incoming):
     ph = k * math.tau / len(incoming)
     s_expr = f"(0.32*(0.5-0.5*cos({W}+{ph!r})))"
@@ -318,7 +318,7 @@ for k, (obj, slot, loc0, rot0) in enumerate(incoming):
         drive(obj, "location", i, f"{loc0[i]!r}+({slot[i] - loc0[i]!r})*{s_expr}")
         drive(obj, "rotation_euler", i, f"{rot0[i]!r}*(1-{s_expr})")
 
-# 격자/클러스터 전체: 아주 느린 호흡(±1.2도 요, 주기 N)
+# whole grid/cluster: very slow breathing (±1.2 deg yaw, period N)
 drive(grid, "rotation_euler", 2, f"{math.radians(-32)!r}+{math.radians(1.2)!r}*sin({W})")
 drive(clus, "rotation_euler", 2, f"{math.radians(28)!r}+{math.radians(1.5)!r}*sin({W}+2.0)")
 
@@ -326,6 +326,6 @@ if args.still is None and (args.start or args.end):
     scene.frame_start = args.start or 1
     scene.frame_end = args.end or N
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
-    bpy.ops.render.render(animation=True)      # 청크: 인코딩은 다 모은 뒤 따로
+    bpy.ops.render.render(animation=True)      # chunked: encode separately after collecting all chunks
 else:
     lib.render(args)

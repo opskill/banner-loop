@@ -1,4 +1,4 @@
-"""씬 공용 헬퍼: 인자 파싱, 렌더 설정, PBR 재질, 키프레임."""
+"""Shared scene helpers: argument parsing, render setup, PBR materials, keyframes."""
 import argparse
 import math
 import os
@@ -10,9 +10,9 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 TEXTURE_DIR = os.path.join(ROOT, "assets", "textures")
 
 
-# ---------------------------------------------------------------- 인자
+# ---------------------------------------------------------------- arguments
 def parse_args(name, frames=150, extra=None, engine="eevee"):
-    """공통 인자를 파싱한다. extra(parser) 로 씬 전용 인자를 추가할 수 있다."""
+    """Parse the common arguments. extra(parser) can add scene-specific ones."""
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     p = argparse.ArgumentParser()
     if extra:
@@ -20,13 +20,13 @@ def parse_args(name, frames=150, extra=None, engine="eevee"):
     p.add_argument("--out", default=os.path.join(ROOT, "out", name))
     p.add_argument("--frames", type=int, default=frames)
     p.add_argument("--fps", type=int, default=30)
-    p.add_argument("--preview", action="store_true", help="절반 해상도, 낮은 샘플")
-    p.add_argument("--still", type=int, default=None, help="이 프레임만 PNG로 렌더")
+    p.add_argument("--preview", action="store_true", help="half resolution, low samples")
+    p.add_argument("--still", type=int, default=None, help="render only this frame as PNG")
     p.add_argument("--engine", choices=["eevee", "cycles"], default=engine)
     return p.parse_args(argv)
 
 
-# ---------------------------------------------------------------- 씬/렌더
+# ---------------------------------------------------------------- scene / render
 def reset_scene():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     return bpy.context.scene
@@ -46,12 +46,12 @@ def setup_render(scene, args):
         scene.cycles.use_denoising = True
         scene.cycles.use_adaptive_sampling = True
         _enable_gpu(scene)
-        # 반사가 많은 실내에서 생기는 반짝이 노이즈(fireflies) 억제
+        # suppress sparkle noise (fireflies) in reflective interiors
         scene.cycles.sample_clamp_indirect = 5.0
         scene.cycles.caustics_reflective = False
         scene.cycles.caustics_refractive = False
     else:
-        # Blender 4.2~4.5 는 BLENDER_EEVEE_NEXT, 그 외는 BLENDER_EEVEE
+        # Blender 4.2-4.5 uses BLENDER_EEVEE_NEXT, everything else BLENDER_EEVEE
         for engine in ("BLENDER_EEVEE_NEXT", "BLENDER_EEVEE"):
             try:
                 scene.render.engine = engine
@@ -66,15 +66,15 @@ def setup_render(scene, args):
         scene.render.image_settings.file_format = "PNG"
         scene.render.filepath = args.out + ".png"
     else:
-        # 중간에 Blender 가 죽어도 이어서 렌더하도록 PNG 시퀀스로 쓰고, 끝나면 ffmpeg 로 mp4 를 만든다
+        # write a PNG sequence so rendering can resume if Blender dies midway, then build the mp4 with ffmpeg at the end
         scene.render.image_settings.file_format = "PNG"
-        scene.render.use_overwrite = False      # 이미 있는 프레임은 건너뜀(이어하기)
+        scene.render.use_overwrite = False      # skip frames that already exist (resume)
         scene.render.use_placeholder = True
         scene.render.filepath = os.path.join(args.out + "_frames", "f_")
 
 
 def _enable_gpu(scene):
-    """GPU 가 있으면 쓴다 (맥북 Metal, NVIDIA OptiX/CUDA 등). 없으면 조용히 CPU 로 남는다."""
+    """Use the GPU if there is one (MacBook Metal, NVIDIA OptiX/CUDA, etc.). Otherwise quietly stay on CPU."""
     try:
         prefs = bpy.context.preferences.addons["cycles"].preferences
         for kind in ("METAL", "OPTIX", "CUDA", "HIP", "ONEAPI"):
@@ -85,7 +85,8 @@ def _enable_gpu(scene):
             prefs.refresh_devices() if hasattr(prefs, "refresh_devices") else prefs.get_devices()
             gpus = [d for d in prefs.devices if d.type != "CPU"]
             if gpus:
-                # Apple Silicon 은 CPU 도 같이 쓰는 편이 빠르다. RENDER_GPU_ONLY=1 이면 GPU 만 쓰고 CPU 는 비워 둔다(발열/팬 소음 완화)
+                # On Apple Silicon, using the CPU too is usually faster. With RENDER_GPU_ONLY=1
+                # only the GPU is used and the CPU is left idle (less heat/fan noise)
                 gpu_only = os.environ.get("RENDER_GPU_ONLY") == "1"
                 for d in prefs.devices:
                     d.use = (d.type != "CPU") if gpu_only else True
@@ -95,9 +96,9 @@ def _enable_gpu(scene):
                 scene.cycles.device = "GPU"
                 print(f"[lib] Cycles GPU: {kind} ({', '.join(d.name for d in gpus)})")
                 return
-        print("[lib] GPU 없음 - CPU 렌더")
+        print("[lib] no GPU - CPU render")
     except Exception as e:  # noqa: BLE001
-        print(f"[lib] GPU 설정 건너뜀: {e}")
+        print(f"[lib] GPU setup skipped: {e}")
 
 
 def _view_transforms(scene):
@@ -112,25 +113,25 @@ def render(args):
 
 
 def _encode_mp4(args):
-    """프레임 PNG 시퀀스를 mp4(H.264)로 묶는다. 프레임 폴더는 남겨 둔다(이어하기용)."""
+    """Encode the PNG frame sequence into an mp4 (H.264). The frames folder is kept (for resuming)."""
     import shutil
     import subprocess
     frames_dir = args.out + "_frames"
     ffmpeg = shutil.which("ffmpeg")
     if not ffmpeg:
-        print(f"[lib] ffmpeg 없음 - PNG 시퀀스만 남김: {frames_dir}")
+        print(f"[lib] no ffmpeg - leaving only the PNG sequence: {frames_dir}")
         return
     missing = [f for f in range(1, args.frames + 1)
                if not os.path.exists(os.path.join(frames_dir, f"f_{f:04d}.png"))]
     if missing:
-        print(f"[lib] 빠진 프레임 {len(missing)}개 - 인코딩 건너뜀: {frames_dir}")
+        print(f"[lib] missing {len(missing)} frames - skipping encode: {frames_dir}")
         return
     subprocess.run([ffmpeg, "-y", "-framerate", str(args.fps), "-i", os.path.join(frames_dir, "f_%04d.png"),
                     "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "18", args.out + ".mp4"], check=True)
     print(f"[lib] Saved: {args.out}.mp4")
 
 
-# ---------------------------------------------------------------- 월드/조명
+# ---------------------------------------------------------------- world / lighting
 def set_world(color=(0.02, 0.02, 0.03, 1.0), strength=1.0):
     world = bpy.data.worlds.new("World")
     bpy.context.scene.world = world
@@ -159,16 +160,16 @@ def look_at(obj, target):
     c.up_axis = "UP_Y"
 
 
-# ---------------------------------------------------------------- 재질
+# ---------------------------------------------------------------- materials
 def set_input(bsdf, name, value):
-    """Blender 버전별로 소켓 이름이 달라서, 없으면 조용히 건너뛴다."""
+    """Socket names differ between Blender versions, so skip quietly if missing."""
     if name in bsdf.inputs:
         bsdf.inputs[name].default_value = value
 
 
 def make_pbr(name, base, metallic=0.0, roughness=0.5, bump=0.0, bump_scale=40.0,
              coat=0.0, emission=None):
-    """절차적 PBR 재질. bump>0 이면 노이즈로 표면 질감을 준다."""
+    """Procedural PBR material. With bump>0, noise adds surface texture."""
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
     nt = mat.node_tree
@@ -193,9 +194,9 @@ def make_pbr(name, base, metallic=0.0, roughness=0.5, bump=0.0, bump_scale=40.0,
 
 
 def make_pbr_from_textures(name, folder):
-    """assets/textures/<folder>/ 안의 이미지로 PBR 재질을 만든다.
+    """Build a PBR material from the images in assets/textures/<folder>/.
 
-    파일명에 color|basecolor|albedo, roughness, metallic, normal 이 들어가면 자동 연결.
+    Files whose names contain color|basecolor|albedo, roughness, metallic, normal are linked automatically.
     """
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
@@ -236,7 +237,7 @@ def assign(obj, mat, smooth=True):
             poly.use_smooth = True
 
 
-# ---------------------------------------------------------------- 키프레임
+# ---------------------------------------------------------------- keyframes
 def keyframe(obj, frame, **props):
     """keyframe(obj, 10, location=(0,0,1), rotation_euler=(0,0,0))"""
     for path, value in props.items():
@@ -245,7 +246,7 @@ def keyframe(obj, frame, **props):
 
 
 def set_default_interpolation(kind):
-    """이후 삽입되는 키프레임의 보간 방식 (LINEAR | BEZIER). 버전 무관하게 동작."""
+    """Interpolation mode for keyframes inserted afterwards (LINEAR | BEZIER). Works across versions."""
     bpy.context.preferences.edit.keyframe_new_interpolation_type = kind
 
 
@@ -253,13 +254,13 @@ def deg(x):
     return math.radians(x)
 
 
-# ---------------------------------------------------------------- 에셋 (Poly Haven 등)
+# ---------------------------------------------------------------- assets (Poly Haven etc.)
 def make_tiled_pbr(name, folder, tile=1.0, tint=None, normal_strength=1.0, rough_scale=1.0):
-    """assets/textures/<folder>/ 의 맵을 '미터 단위로 타일링'해서 쓰는 PBR 재질.
+    """PBR material that uses the maps in assets/textures/<folder>/ 'tiled in metres'.
 
-    오브젝트 좌표 + 박스 투영이라 UV 가 없어도 모든 면에 늘어짐 없이 붙는다.
-    (도형은 scale 이 적용된 상태여야 한다 - lib.box 가 그렇게 만든다.)
-    tile: 텍스처 한 장이 덮는 실제 크기(m). tint: 색을 곱해서 톤을 바꾼다.
+    Object coordinates + box projection, so it sticks to every face without stretching even with no UVs.
+    (Shapes must have scale applied - lib.box builds them that way.)
+    tile: real-world size covered by one texture tile (m). tint: multiplies the colour to shift the tone.
     """
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
@@ -328,7 +329,7 @@ def make_tiled_pbr(name, folder, tile=1.0, tint=None, normal_strength=1.0, rough
 
 
 def import_kit(model_id):
-    """모듈형 키트를 가져와 {부품이름 접미사: 오브젝트} 로 돌려준다 (씬에는 원본이 남는다)."""
+    """Import a modular kit and return {part-name suffix: object} (the originals stay in the scene)."""
     path = os.path.join(ROOT, "assets", "models", model_id, f"{model_id}.gltf")
     before = set(bpy.data.objects)
     bpy.ops.import_scene.gltf(filepath=path)
@@ -343,7 +344,7 @@ def world_center(obj):
 
 
 def instance(src, center, parent=None, rot_z_deg=0.0):
-    """키트 부품 src 의 복제(메시 공유)를 만들어 바운딩박스 중심이 center 에 오게 놓는다."""
+    """Make a copy (shared mesh) of kit part src and place it so its bounding-box centre lands on center."""
     from mathutils import Vector
     new = src.copy()
     bpy.context.collection.objects.link(new)
@@ -358,9 +359,9 @@ def instance(src, center, parent=None, rot_z_deg=0.0):
 
 
 def import_model(model_id, name=None, loc=(0, 0, 0), rot=(0, 0, 0), scale=1.0):
-    """assets/models/<id>/<id>.gltf 를 가져와 하나의 그룹(빈 오브젝트) 아래로 묶는다.
+    """Import assets/models/<id>/<id>.gltf and gather it under one group (empty object).
 
-    fly_in 등으로 그룹 전체를 움직일 수 있다. 반환: (그룹, 가져온 오브젝트 목록)
+    The whole group can then be moved with fly_in etc. Returns: (group, list of imported objects)
     """
     path = os.path.join(ROOT, "assets", "models", model_id, f"{model_id}.gltf")
     before = set(bpy.data.objects)
@@ -375,9 +376,9 @@ def import_model(model_id, name=None, loc=(0, 0, 0), rot=(0, 0, 0), scale=1.0):
     return root, new
 
 
-# ---------------------------------------------------------------- 도형 (만화풍 디오라마용)
+# ---------------------------------------------------------------- shapes (for the cartoon diorama)
 def group(name, loc=(0, 0, 0)):
-    """여러 도형을 묶어서 한 번에 움직이기 위한 빈 오브젝트."""
+    """Empty object for grouping several shapes so they move together."""
     obj = bpy.data.objects.new(name, None)
     obj.location = loc
     bpy.context.collection.objects.link(obj)
@@ -392,7 +393,7 @@ def _finish(obj, name, mat, parent, bevel):
         mod.width = bevel
         mod.segments = 3
     if parent is not None:
-        obj.parent = parent  # 부모 기준 로컬 좌표로 해석된다
+        obj.parent = parent  # interpreted as local coordinates relative to the parent
     return obj
 
 
@@ -428,9 +429,9 @@ def ball(name, radius, loc, mat, parent=None, scale=(1, 1, 1)):
     return _finish(obj, name, mat, parent, 0.0)
 
 
-# ---------------------------------------------------------------- 만화풍 룩
+# ---------------------------------------------------------------- cartoon look
 def enable_outline(scene, thickness=2.0, color=(0.04, 0.04, 0.07)):
-    """Freestyle 외곽선. EEVEE/Cycles 둘 다 동작."""
+    """Freestyle outlines. Works with both EEVEE and Cycles."""
     scene.render.use_freestyle = True
     scene.render.line_thickness_mode = "ABSOLUTE"
     scene.render.line_thickness = thickness
@@ -438,7 +439,7 @@ def enable_outline(scene, thickness=2.0, color=(0.04, 0.04, 0.07)):
     vl.use_freestyle = True
     fs = vl.freestyle_settings
     lineset = fs.linesets[0] if len(fs.linesets) else fs.linesets.new("outline")
-    if lineset.linestyle is None:  # 빈 파일에서는 linestyle 이 비어 있다
+    if lineset.linestyle is None:  # in an empty file, linestyle is None
         lineset.linestyle = bpy.data.linestyles.new("outline")
     lineset.linestyle.color = color
 
@@ -453,13 +454,13 @@ def add_sun(name, rotation_deg, energy=3.0, color=(1.0, 0.96, 0.88)):
     return obj
 
 
-# ---------------------------------------------------------------- 조립 모션
+# ---------------------------------------------------------------- assembly motion
 def fly_in(obj, start, duration, offset, spin_deg=(0, 0, 0), squash=True):
-    """흩어진 위치(offset, spin)에서 대기하다가 start 에 날아와 제자리에 조립된다.
+    """Waits at a scattered position (offset, spin), flies in at start and assembles in place.
 
-    착지 순간에 살짝 눌렸다 펴지는(squash) 스케일로 만화 같은 느낌을 준다.
-    실사풍 씬은 squash=False 로 끈다 (크기 변화 없이 감속하며 내려앉는다).
-    키프레임 직전의 현재 location/rotation/scale 이 '조립된 상태'로 간주된다.
+    A scale that squashes slightly on landing and springs back gives a cartoon feel.
+    Photoreal scenes turn it off with squash=False (they decelerate and settle with no size change).
+    The current location/rotation/scale just before keyframing is treated as the 'assembled state'.
     """
     rest_loc = tuple(obj.location)
     rest_rot = tuple(obj.rotation_euler)
@@ -475,7 +476,7 @@ def fly_in(obj, start, duration, offset, spin_deg=(0, 0, 0), squash=True):
 
 
 def drift(obj, frames, dx=0.0, dy=0.0):
-    """구름처럼 천천히 흘러가는 직선 이동."""
+    """Straight-line motion that drifts slowly like a cloud."""
     set_default_interpolation("LINEAR")
     x, y, z = obj.location
     keyframe(obj, 1, location=(x, y, z))
@@ -483,12 +484,12 @@ def drift(obj, frames, dx=0.0, dy=0.0):
     set_default_interpolation("BEZIER")
 
 
-# ---------------------------------------------------------------- 에셋 (Sketchfab 등 크기/방향이 제각각인 모델)
+# ---------------------------------------------------------------- assets (Sketchfab etc., models of arbitrary size/orientation)
 def load_template(uid, height, subdir="sketchfab"):
-    """assets/models/<subdir>/<uid>/scene.gltf 를 가져와 '높이 height(m), 바닥 z=0, xy 중심 0' 으로 정규화할 행렬을 계산한다.
+    """Import assets/models/<subdir>/<uid>/scene.gltf and compute the matrix that normalizes it to 'height height (m), floor z=0, xy centre 0'.
 
-    원본은 템플릿으로 남는다. place_template 으로 메시를 공유한 인스턴스를 만들고,
-    다 만든 뒤 drop_template 으로 원본을 지운다. glTF 는 앞면이 -Y 를 향한다고 가정.
+    The original stays as a template. place_template makes instances that share the mesh,
+    and drop_template deletes the original when done. Assumes the glTF front faces -Y.
     """
     from mathutils import Matrix, Vector
     path = os.path.join(ROOT, "assets", "models", subdir, uid, "scene.gltf")
@@ -507,7 +508,7 @@ def load_template(uid, height, subdir="sketchfab"):
 
 
 def place_template(tpl, parent):
-    """템플릿의 모든 메시를 parent(빈 오브젝트) 아래에 복제한다 (메시 데이터 공유)."""
+    """Copy every mesh of the template under parent (an empty object) (mesh data shared)."""
     from mathutils import Matrix
     for src in tpl["meshes"]:
         n = src.copy()

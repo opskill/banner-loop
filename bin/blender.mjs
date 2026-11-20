@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Blender를 헤드리스로 실행해 scenes/<name>.py 를 돌린다.
-// 사용: node bin/blender.mjs <scene> [scene args...]
-// Blender 경로: 환경변수 BLENDER_BIN (기본값: PATH 의 `blender`)
+// Run scenes/<name>.py with Blender in headless mode.
+// Usage: node bin/blender.mjs <scene> [scene args...]
+// Blender path: BLENDER_BIN environment variable (default: `blender` on PATH)
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -32,9 +32,9 @@ const result = spawnSync(
 
 if (result.error?.code === "ENOENT") {
   console.error(
-    `Blender 실행 파일을 찾을 수 없습니다: ${bin}\n` +
-      "Blender를 설치하거나 BLENDER_BIN 환경변수에 경로를 지정하세요.\n" +
-      "  예) BLENDER_BIN=/Applications/Blender.app/Contents/MacOS/Blender",
+    `Could not find the Blender executable: ${bin}\n` +
+      "Install Blender or set the BLENDER_BIN environment variable to its path.\n" +
+      "  e.g. BLENDER_BIN=/Applications/Blender.app/Contents/MacOS/Blender",
   );
   process.exit(127);
 }

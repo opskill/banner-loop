@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// assets/manifest.json 에 적힌 Poly Haven(CC0) 에셋을 assets/ 아래로 내려받는다.
-// 이미 받은 파일은 건너뛴다. 사용: node bin/fetch-assets.mjs
-// (프록시 환경에서는 NODE_USE_ENV_PROXY=1 필요)
+// Download the Poly Haven (CC0) assets listed in assets/manifest.json into assets/.
+// Files already downloaded are skipped. Usage: node bin/fetch-assets.mjs
+// (NODE_USE_ENV_PROXY=1 is required behind a proxy)
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,7 +11,7 @@ const manifest = JSON.parse(readFileSync(join(root, "assets", "manifest.json"), 
 const res = manifest.resolution ?? "2k";
 const API = "https://api.polyhaven.com/files";
 
-// Poly Haven 맵 이름 -> 로컬 파일명 접미사 (scenes/lib.py make_pbr_from_textures 가 인식하는 이름)
+// Poly Haven map name -> local filename suffix (names recognized by make_pbr_from_textures in scenes/lib.py)
 const MAPS = { Diffuse: "diffuse", nor_gl: "normal", Rough: "roughness", Metal: "metallic", Displacement: "displacement" };
 
 async function getJson(url) {
@@ -45,7 +45,7 @@ for (const id of manifest.models ?? []) {
   const files = await getJson(`${API}/${id}`);
   const gltf = files.gltf?.[res]?.gltf ?? files.gltf?.["1k"]?.gltf;
   if (!gltf) {
-    console.warn(`! model ${id}: glTF 없음`);
+    console.warn(`! model ${id}: no glTF`);
     continue;
   }
   const dir = join(root, "assets", "models", id);

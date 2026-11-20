@@ -1,10 +1,10 @@
-"""컨셉 04 - 추상 야간 도시의 데이터 흐름: 높은 사선 시점에서 내려다본 낮고 어두운 블록 도시.
+"""Concept 04 - data flow in an abstract night city: a low, dark block city seen from a high oblique viewpoint.
 
-도시는 화면 좌우 두 해안에 몰려 있고, 가운데는 지평선 쪽으로 열린 어두운 만(물)이라 조용하다.
-거리를 따라 가는 빛줄기(데이터 흐름)가 흐르며, 해안 대로의 흐름은 지평선 가운데(소실 영역)로 모인다.
+The city is clustered on two shores at the left and right of the frame; the centre is a dark bay (water) opening toward the horizon, so it stays calm.
+Thin streaks of light (data flow) run along the streets, and the flow on the shore avenues converges at the horizon centre (vanishing area).
 
-루프(5초, 150프레임): 빛줄기 무늬는 fract(u/L - K*t) 로 정수 K 파장만큼 이동 -> 끝=처음.
-카메라는 sin(2pi t) 로 아주 작게 흔들렸다 돌아온다.
+Loop (5 s, 150 frames): the streak pattern shifts by an integer K wavelengths via fract(u/L - K*t) -> end = start.
+The camera sways very slightly with sin(2pi t) and returns.
 """
 import math
 import os
@@ -19,8 +19,8 @@ import bmesh  # noqa: E402
 import lib  # noqa: E402
 
 def _extra(p):
-    p.add_argument("--start", type=int, default=None, help="애니메이션 시작 프레임 (청크 렌더)")
-    p.add_argument("--end", type=int, default=None, help="애니메이션 끝 프레임 (청크 렌더)")
+    p.add_argument("--start", type=int, default=None, help="animation start frame (chunked render)")
+    p.add_argument("--end", type=int, default=None, help="animation end frame (chunked render)")
     p.add_argument("--spp", type=int, default=None)
     p.add_argument("--seed", type=int, default=0)
 
@@ -31,7 +31,7 @@ lib.setup_render(scene, args)
 scene.render.resolution_x, scene.render.resolution_y = 1920, 540
 if args.engine == "cycles":
     scene.cycles.samples = args.spp or (32 if args.preview else 128)
-    scene.cycles.seed = args.seed                 # 고정 시드 (프레임마다 같은 노이즈 무늬 -> 루프 이음새 없음)
+    scene.cycles.seed = args.seed                 # fixed seed (same noise pattern every frame -> no loop seam)
     scene.cycles.use_animated_seed = False
     scene.render.use_persistent_data = True
     scene.cycles.adaptive_threshold = 0.03 if args.preview else 0.01
@@ -54,7 +54,7 @@ CAM_H = 350.0
 BLOCK, STREET = 58.0, 16.0
 PITCH = BLOCK + STREET
 Y_MIN, Y_MAX = 280.0, 8000.0
-BAY0, BAY = 120.0, 0.08         # 강/만의 반폭 = BAY0 + BAY*y  -> 앞은 넓고 지평선 가운데로 모인다
+BAY0, BAY = 120.0, 0.08         # half-width of the river/bay = BAY0 + BAY*y  -> wide in front, converging at the horizon centre
 FOG_K = 0.00048
 FOG_COL = (0.006, 0.012, 0.027)
 
@@ -67,7 +67,7 @@ def xmax(y):
     return 0.80 * y + 160
 
 
-# ------------------------------------------------------------------ 노드 헬퍼
+# ------------------------------------------------------------------ node helpers
 class NB:
     def __init__(self, nt):
         self.nt = nt
@@ -108,11 +108,11 @@ def new_mat(name):
 
 
 def finish_fog(nb, out, shader_socket):
-    """카메라 거리 기반 안개: 1-exp(-k*d) 로 안개색 발광과 섞는다 (볼륨보다 깨끗하고 빠르다)."""
+    """Camera-distance fog: mixes in fog-colour emission by 1-exp(-k*d) (cleaner and faster than a volume)."""
     cam = nb.node("ShaderNodeCameraData")
     f = nb.math("SUBTRACT", 1.0, nb.math("EXPONENT", nb.math("MULTIPLY", cam.outputs["View Distance"], -FOG_K)))
     fog = nb.node("ShaderNodeEmission", Color=FOG_COL + (1.0,), Strength=1.0)
-    # 카메라 광선에만 안개 (반사/간접광은 원래 셰이더)
+    # fog on camera rays only (reflection/indirect light use the original shader)
     lp = nb.node("ShaderNodeLightPath")
     f = nb.math("MULTIPLY", f, lp.outputs["Is Camera Ray"])
     mix = nb.node("ShaderNodeMixShader")
@@ -128,7 +128,7 @@ def loop_time():
     v = holder.nodes.new("ShaderNodeValue")
     o = holder.nodes.new("NodeGroupOutput")
     holder.links.new(v.outputs[0], o.inputs[0])
-    # 드라이버로 선형 시간 (Blender 5.2 에서 키프레임은 ease 가 걸린다). frame N+1 -> 1.0 == frame 1 (fract)
+    # linear time via a driver (in Blender 5.2 keyframes get eased). frame N+1 -> 1.0 == frame 1 (fract)
     fc = v.outputs[0].driver_add("default_value")
     fc.driver.type = "SCRIPTED"
     fc.driver.expression = f"(frame-1)/{N_FRAMES}"
@@ -137,7 +137,7 @@ def loop_time():
 
 LOOP = loop_time()
 
-# ------------------------------------------------------------------ 월드: 지평선 쪽만 아주 옅은 빛
+# ------------------------------------------------------------------ world: only a very faint glow toward the horizon
 lib.set_world(color=(0, 0, 0, 1), strength=1.0)
 wnt = scene.world.node_tree
 wb = NB(wnt)
@@ -150,7 +150,7 @@ ramp.data_type = "RGBA"
 wb.link(hz, ramp.inputs["Factor"])
 ramp.inputs["A"].default_value = (0.002, 0.004, 0.010, 1)
 ramp.inputs["B"].default_value = FOG_COL + (1,)
-# 소실 영역(지평선 가운데)의 은은한 빛
+# subtle glow in the vanishing area (horizon centre)
 cg = wb.math("MULTIPLY", wb.math("EXPONENT", wb.math("MULTIPLY", wb.math("ABSOLUTE", sep.outputs["Z"]), -40.0)),
              wb.math("EXPONENT", wb.math("MULTIPLY", wb.math("ABSOLUTE", sep.outputs["X"]), -5.0)))
 sky_add = wb.node("ShaderNodeMix")
@@ -164,21 +164,21 @@ wb.link(wb.math("MULTIPLY", cg, 0.12), cgc.inputs[1])
 wb.link(wb.math("MULTIPLY", cg, 0.22), cgc.inputs[2])
 wb.link(cgc.outputs[0], sky_add.inputs["B"])
 lp = wb.node("ShaderNodeLightPath")
-amb = wb.node("ShaderNodeMix")          # 조명용으로는 약하게
+amb = wb.node("ShaderNodeMix")          # weak for lighting
 amb.data_type = "RGBA"
 wb.link(lp.outputs["Is Camera Ray"], amb.inputs["Factor"])
 amb.inputs["A"].default_value = (0.006, 0.010, 0.020, 1)
 wb.link(sky_add.outputs["Result"], amb.inputs["B"])
 wb.link(amb.outputs["Result"], wnt.nodes["Background"].inputs["Color"])
 
-# ------------------------------------------------------------------ 재질
-# 바닥(아스팔트) - 빛줄기가 살짝 비치게 약간 반들
+# ------------------------------------------------------------------ materials
+# ground (asphalt) - slightly glossy so the light streaks reflect faintly
 mat, nb, out = new_mat("Ground")
 b = nb.node("ShaderNodeBsdfPrincipled", **{"Base Color": (0.010, 0.012, 0.016, 1), "Roughness": 0.45})
 finish_fog(nb, out, b.outputs[0])
 ground_mat = mat
 
-# 물 - 거울에 가까운 어두운 수면, 잔물결 범프
+# water - dark, nearly mirror-like surface with ripple bump
 mat, nb, out = new_mat("Water")
 b = nb.node("ShaderNodeBsdfPrincipled", **{"Base Color": (0.002, 0.004, 0.007, 1), "Roughness": 0.06})
 wn = nb.node("ShaderNodeTexNoise", Scale=0.02, Detail=6.0)
@@ -193,7 +193,7 @@ nb.link(bump.outputs[0], b.inputs["Normal"])
 finish_fog(nb, out, b.outputs[0])
 water_mat = mat
 
-# 건물 - 어두운 콘크리트 + 드문드문 켜진 창
+# buildings - dark concrete + sparsely lit windows
 mat, nb, out = new_mat("Building")
 geo = nb.node("ShaderNodeNewGeometry")
 sp = nb.node("ShaderNodeSeparateXYZ")
@@ -229,7 +229,7 @@ building_mat = mat
 
 
 def stream_mat(name, color, k1, l1, k2, l2, gain, base=0.03):
-    """u(미터, 흐르는 방향) 와 v(개별 위상)를 UV 에 담은 띠. t 동안 정수 K 파장 이동 -> 루프."""
+    """A strip carrying u (metres, flow direction) and v (per-strip phase) in its UVs. Shifts an integer K wavelengths over t -> loop."""
     mat, nb, out = new_mat(name)
     uvn = nb.node("ShaderNodeUVMap")
     s = nb.node("ShaderNodeSeparateXYZ")
@@ -245,7 +245,7 @@ def stream_mat(name, color, k1, l1, k2, l2, gain, base=0.03):
         return nb.math("POWER", x, sharp)
 
     p = nb.math("ADD", pulse(k1, l1, 7.0, 1.0), nb.math("MULTIPLY", pulse(k2, l2, 14.0, 3.7), 0.7))
-    # 거리별 밝기 변화(띠마다 다르게): 위상으로 전체 세기 가중
+    # brightness variation per strip (differs by strip): overall strength weighted by phase
     w = nb.math("ADD", 0.45, nb.math("MULTIPLY", nb.math("FRACT", nb.math("MULTIPLY", ph, 7.3)), 0.55))
     inten = nb.math("ADD", base, nb.math("MULTIPLY", p, w))
     em = nb.node("ShaderNodeEmission", Color=color + (1.0,))
@@ -259,7 +259,7 @@ white = stream_mat("Stream Main", (0.62, 0.88, 1.0), 3, 120.0, 5, 61.0, 20.0, ba
 amber = stream_mat("Stream Amber", (1.0, 0.52, 0.18), 2, 75.0, 3, 41.0, 16.0)
 
 
-# ------------------------------------------------------------------ 지오메트리 빌더
+# ------------------------------------------------------------------ geometry builder
 class MeshBuilder:
     def __init__(self, name, uv=False):
         self.bm = bmesh.new()
@@ -292,13 +292,13 @@ class MeshBuilder:
 
 
 def strip(mb, p0, p1, width, z, phase, reverse=False):
-    """p0->p1 방향으로 흐르는 빛 띠. u 는 미터 단위 진행 거리 (reverse 면 반대로 흐름)."""
+    """Light strip flowing from p0 to p1. u is the distance travelled in metres (flows the other way if reverse)."""
     dx, dy = p1[0] - p0[0], p1[1] - p0[1]
     L = math.hypot(dx, dy)
     nx, ny = -dy / L * width / 2, dx / L * width / 2
     u0 = 0.0 if not reverse else L
     u1 = L if not reverse else 0.0
-    # 시작 좌표를 월드 위치에 묶어서 끊긴 구간끼리도 무늬가 이어지게
+    # tie the start coordinate to the world position so the pattern continues across broken segments
     off = (p0[0] * dx + p0[1] * dy) / L
     u0 += off if not reverse else -off
     u1 += off if not reverse else -off
@@ -306,7 +306,7 @@ def strip(mb, p0, p1, width, z, phase, reverse=False):
             [(u0, phase), (u1, phase), (u1, phase), (u0, phase)])
 
 
-# 바닥 / 물
+# ground / water
 ground = MeshBuilder("Ground")
 ground.quad([(-40000, 0, 0), (40000, 0, 0), (40000, 40000, 0), (-40000, 40000, 0)])
 ground.finish(ground_mat)
@@ -320,12 +320,12 @@ cy_s = MeshBuilder("StreamsCyan", uv=True)
 am_s = MeshBuilder("StreamsAmber", uv=True)
 main_s = MeshBuilder("StreamsMain", uv=True)
 
-COAST = 26.0            # 물가 산책로 폭
+COAST = 26.0            # waterfront promenade width
 i_max = int(xmax(Y_MAX) / PITCH) + 1
 j_min, j_max = int(Y_MIN / PITCH), int(Y_MAX / PITCH)
 
 for sgn in (-1, 1):
-    # 블록
+    # blocks
     for j in range(j_min, j_max):
         y0 = j * PITCH + STREET / 2
         y1 = y0 + BLOCK
@@ -334,7 +334,7 @@ for sgn in (-1, 1):
             ax1 = ax0 + BLOCK
             if ax0 < hw(y1) + COAST or ax0 > xmax(y0):
                 continue
-            # 블록 하나를 1~4개 건물로 쪼갠다
+            # split each block into 1-4 buildings
             splits = rng.choice((1, 2, 2, 3, 4))
             dist = (ax0 ** 2 + y0 ** 2) ** 0.5
             near_coast = ax0 < hw(y1) + COAST + PITCH * 2
@@ -349,7 +349,7 @@ for sgn in (-1, 1):
                     h *= 1.5
                 x0, x1 = sorted((sgn * fx0, sgn * fx1))
                 blocks.box(x0, y0 + inset, x1, y1 - inset, h)
-    # 세로 거리 (y 방향, 화면 안쪽으로 흐름 -> 소실 영역)
+    # longitudinal streets (y direction, flowing into the screen -> vanishing area)
     for i in range(0, i_max):
         x = i * PITCH
         ytop = min(Y_MAX, (x - COAST - BAY0) / BAY)
@@ -362,7 +362,7 @@ for sgn in (-1, 1):
                 strip(cy_s, (sgn * x + off, ybot, 0), (sgn * x + off, ytop, 0), 1.6, 0.25, rng.random())
             elif r < 0.82:
                 strip(am_s, (sgn * x + off, ybot, 0), (sgn * x + off, ytop, 0), 1.4, 0.25, rng.random(), reverse=True)
-    # 가로 거리 (x 방향, 물가 쪽으로 흐름)
+    # cross streets (x direction, flowing toward the waterfront)
     for j in range(j_min, j_max + 1):
         y = j * PITCH
         xin = hw(y) + COAST * 0.6
@@ -375,7 +375,7 @@ for sgn in (-1, 1):
                 strip(cy_s, (sgn * xout, y + off, 0), (sgn * xin, y + off, 0), 1.6, 0.25, rng.random())
             elif r < 0.68:
                 strip(am_s, (sgn * xout, y + off, 0), (sgn * xin, y + off, 0), 1.4, 0.25, rng.random(), reverse=True)
-    # 해안 대로: 소실 영역으로 모이는 가장 밝은 흐름 (3차선)
+    # shore avenue: the brightest flow, converging on the vanishing area (3 lanes)
     for k, off in enumerate((7.0, 13.0)):
         strip(main_s, (sgn * (hw(Y_MIN) + off), Y_MIN, 0), (sgn * (hw(YW) + off), YW, 0), 1.8, 0.3, rng.random())
 
@@ -384,11 +384,11 @@ cy_s.finish(cyan)
 am_s.finish(amber)
 main_s.finish(white)
 
-# ------------------------------------------------------------------ 조명: 지평선 쪽의 아주 약한 달빛 (건물 윤곽)
+# ------------------------------------------------------------------ lighting: very weak moonlight from the horizon side (building outlines)
 moon = lib.add_sun("Moon", (0, 0, 0), energy=0.08, color=(0.6, 0.75, 1.0))
 moon.rotation_euler = (math.radians(-75), 0, math.radians(180))
 
-# ------------------------------------------------------------------ 카메라 (높은 사선) + 루프 흔들림
+# ------------------------------------------------------------------ camera (high oblique) + loop sway
 cam_data = bpy.data.cameras.new("Cam")
 cam_data.sensor_fit = "HORIZONTAL"
 cam_data.sensor_width = 36
@@ -400,7 +400,7 @@ scene.camera = cam
 PITCH_DOWN = 10.0
 cam.location = (0.0, 0.0, CAM_H)
 cam.rotation_euler = (math.radians(90 - PITCH_DOWN), 0, 0)
-_PH = f"(2*pi*(frame-1)/{N_FRAMES})"                  # 드라이버 (키프레임은 5.2 에서 ease 가 걸린다)
+_PH = f"(2*pi*(frame-1)/{N_FRAMES})"                  # driver (keyframes get eased in 5.2)
 for path, idx, expr in (("location", 0, f"5.0*sin({_PH})"),
                         ("location", 2, f"{CAM_H}+2.5*sin(2*{_PH})"),
                         ("rotation_euler", 2, f"{math.radians(0.25)}*sin({_PH})")):
@@ -426,7 +426,7 @@ def add_bloom(strength=0.45, threshold=0.8, size=0.7):
         scene.compositing_node_group = ng
         scene.render.use_compositing = True
     except Exception as e:  # noqa: BLE001
-        print(f"[city_dataflow] bloom 건너뜀: {e}")
+        print(f"[city_dataflow] bloom skipped: {e}")
 
 
 add_bloom()
@@ -434,6 +434,6 @@ if args.still is None and (args.start or args.end):
     scene.frame_start = args.start or 1
     scene.frame_end = args.end or N_FRAMES
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
-    bpy.ops.render.render(animation=True)      # 청크: 인코딩은 다 모은 뒤 따로
+    bpy.ops.render.render(animation=True)      # chunked: encode separately after collecting all chunks
 else:
     lib.render(args)

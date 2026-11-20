@@ -1,10 +1,13 @@
-"""컨셉 08 도메인 그리드: 지평선까지 이어지는 어두운 평면 위 작은 점 노드 격자(주소 공간).
-양옆에서 몇몇 노드가 켜지고, 노드에서 노드로 얇은 빛 경로가 호를 그리며 건너뛴다(조회 경로: 리졸버→루트→TLD→권한 서버).
-가운데는 점만 고요하게 멀어진다.
+"""Concept 08 domain grid: a lattice of small dot nodes on a dark plane stretching to the horizon
+(the address space).
+Some nodes light up on both sides, and thin light paths arc from node to node
+(lookup path: resolver→root→TLD→authoritative server).
+In the centre only the dots recede, calm and quiet.
 
-루프: 점 격자와 경로 배치는 y 방향으로 TILE(=격자 간격 S 의 정수배) 주기. 카메라가 클립 동안 정확히 TILE 만큼 전진.
-경로 펄스는 time(0→1, 1→N+1 프레임) * 정수 freq + phase 의 fract 로 계산 -> N+1 프레임 = 1 프레임.
-사용: node bin/blender.mjs concept_domain_grid --still 1 --engine cycles --out out/concepts/08_domain_grid
+Loop: the dot grid and path layout repeat in y with period TILE (an integer multiple of the grid
+spacing S). The camera advances exactly TILE over the clip.
+Path pulses are computed as fract(time(0→1, frames 1→N+1) * integer freq + phase) -> frame N+1 = frame 1.
+Usage: node bin/blender.mjs concept_domain_grid --still 1 --engine cycles --out out/concepts/08_domain_grid
 """
 import math
 import os
@@ -21,10 +24,10 @@ import lib  # noqa: E402
 
 
 def _extra(p):
-    p.add_argument("--start", type=int, default=None, help="애니메이션 시작 프레임 (청크 렌더)")
-    p.add_argument("--end", type=int, default=None, help="애니메이션 끝 프레임 (청크 렌더)")
+    p.add_argument("--start", type=int, default=None, help="animation start frame (chunked render)")
+    p.add_argument("--end", type=int, default=None, help="animation end frame (chunked render)")
     p.add_argument("--spp", type=int, default=None)
-    p.add_argument("--draft", action="store_true", help="빠른 초안: 960x270, 32spp 이하 + 적응 샘플링 + GPU 디노이즈")
+    p.add_argument("--draft", action="store_true", help="fast draft: 960x270, <=32spp + adaptive sampling + GPU denoise")
 
 
 args = lib.parse_args("concept_domain_grid", frames=150, engine="cycles", extra=_extra)
@@ -34,7 +37,7 @@ scene.render.resolution_x = 1920
 scene.render.resolution_y = 540
 if args.engine == "cycles":
     scene.cycles.samples = args.spp or (48 if args.preview else 160)
-    scene.cycles.seed = 0                      # 고정 시드: 프레임마다 같은 노이즈 무늬(루프 이음매에서도 같음)
+    scene.cycles.seed = 0                      # fixed seed: same noise pattern every frame (also at the loop seam)
     scene.cycles.use_animated_seed = False
     scene.cycles.max_bounces = 4
     scene.cycles.glossy_bounces = 2
@@ -61,16 +64,16 @@ for look in ("AgX - Medium High Contrast", "Medium High Contrast"):
         continue
 
 N = args.frames
-S = 0.5                  # 점 간격(m) = 격자 주기
+S = 0.5                  # dot spacing (m) = grid period
 TILE_CELLS = 16
-TILE = S * TILE_CELLS    # 배치 반복 주기 = 카메라 전진 거리(8m)
-CENTER_HALF = 2.4        # |x| < 이 값은 고요한 가운데 띠(켜진 노드/경로 없음)
+TILE = S * TILE_CELLS    # layout repeat period = camera travel distance (8 m)
+CENTER_HALF = 2.4        # |x| < this is the calm centre band (no lit nodes/paths)
 CYAN = (0.30, 0.72, 1.0, 1.0)
 WARM = (1.0, 0.60, 0.30, 1.0)
 rng = random.Random(11)
 HORIZON = (0.016, 0.034, 0.068, 1.0)
 
-# ---------------------------------------------------------------- 월드: 검정 + 지평선에 옅은 남색 띠
+# ---------------------------------------------------------------- World: black + a pale navy band at the horizon
 world = bpy.data.worlds.new("World")
 scene.world = world
 world.use_nodes = True
@@ -93,7 +96,7 @@ wramp.color_ramp.elements[1].color = HORIZON
 wnt.links.new(wramp.outputs["Color"], bg.inputs["Color"])
 
 
-# ---------------------------------------------------------------- 셰이더 수학 도우미
+# ---------------------------------------------------------------- Shader math helpers
 def mathf(nt, op, a, b=None, clamp=False):
     node = nt.nodes.new("ShaderNodeMath"); node.operation = op; node.use_clamp = clamp
     for idx, val in enumerate((a, b)):
@@ -106,7 +109,7 @@ def mathf(nt, op, a, b=None, clamp=False):
     return node.outputs[0]
 
 
-# ---------------------------------------------------------------- 바닥: 점 노드 격자 (절차적, 무한)
+# ---------------------------------------------------------------- Floor: dot node grid (procedural, infinite)
 def floor_material():
     mat = bpy.data.materials.new("grid_floor")
     mat.use_nodes = True
@@ -123,7 +126,7 @@ def floor_material():
     fx = mathf(nt, "SUBTRACT", mathf(nt, "FRACT", mathf(nt, "ADD", cx, 0.5)), 0.5)
     fy = mathf(nt, "SUBTRACT", mathf(nt, "FRACT", mathf(nt, "ADD", cy, 0.5)), 0.5)
     d = mathf(nt, "MULTIPLY", mathf(nt, "SQRT", mathf(nt, "ADD", mathf(nt, "MULTIPLY", fx, fx),
-                                                         mathf(nt, "MULTIPLY", fy, fy))), S)   # 노드까지 거리(m)
+                                                         mathf(nt, "MULTIPLY", fy, fy))), S)   # distance to node (m)
 
     def disc(radius):
         mr = nt.nodes.new("ShaderNodeMapRange")
@@ -133,7 +136,7 @@ def floor_material():
         nt.links.new(d, mr.inputs["Value"])
         return mr.outputs["Result"]
 
-    # 셀 해시: (round(cx), round(cy) mod TILE_CELLS) -> 켜진 노드
+    # cell hash: (round(cx), round(cy) mod TILE_CELLS) -> lit node
     ix = mathf(nt, "ROUND", cx)
     iy = mathf(nt, "FLOORED_MODULO", mathf(nt, "ROUND", cy), TILE_CELLS)
     comb = nt.nodes.new("ShaderNodeCombineXYZ")
@@ -147,7 +150,7 @@ def floor_material():
     lit = mathf(nt, "MULTIPLY", lit, side)
     warm = mathf(nt, "GREATER_THAN", sepc.outputs["Red"], 0.82)
 
-    # 거리 감쇠(카메라 광선 길이)
+    # distance falloff (camera ray length)
     lp = nt.nodes.new("ShaderNodeLightPath")
     fade = mathf(nt, "EXPONENT", mathf(nt, "DIVIDE", lp.outputs["Ray Length"], -28.0))
     base_dot = mathf(nt, "MULTIPLY", disc(0.020), 0.9)
@@ -159,7 +162,7 @@ def floor_material():
     col.inputs["B"].default_value = WARM
     nt.links.new(col.outputs["Result"], bsdf.inputs["Emission Color"])
     nt.links.new(strength, bsdf.inputs["Emission Strength"])
-    # 대기 원근: 멀수록 지평선 색으로 녹아든다 (평면 끝의 딱딱한 경계 제거)
+    # Aerial perspective: farther points melt into the horizon colour (removes the hard edge of the plane)
     fog_emit = nt.nodes.new("ShaderNodeEmission")
     fog_emit.inputs["Color"].default_value = HORIZON
     fog_emit.inputs["Strength"].default_value = 1.0
@@ -178,13 +181,13 @@ floor.name = "floor"
 floor.scale = (400, 400, 1)
 bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
 floor.location = (0, 150, 0)
-# Object 좌표가 월드와 같도록 바닥 원점을 0 에 두려면 위치 대신 메시를 옮긴다
+# To keep the floor origin at 0 so Object coordinates match world, move the mesh instead of the object location
 for v in floor.data.vertices:
     v.co.y += 150
 floor.location = (0, 0, 0)
 lib.assign(floor, floor_material(), smooth=False)
 
-# ---------------------------------------------------------------- 조회 경로(호) 메시
+# ---------------------------------------------------------------- Lookup path (arc) mesh
 time_mat = bpy.data.materials.new("lookup_path")
 time_mat.use_nodes = True
 pnt = time_mat.node_tree
@@ -203,10 +206,10 @@ uvn = pnt.nodes.new("ShaderNodeUVMap")
 uvsep = pnt.nodes.new("ShaderNodeSeparateXYZ")
 pnt.links.new(uvn.outputs["UV"], uvsep.inputs[0])
 u = uvsep.outputs["X"]
-# x = fract(time*freq + phase); 홉 k 의 머리 위치 h = (x - k*delta)/delta  (0..1 이 이 홉 구간)
+# x = fract(time*freq + phase); head position of hop k: h = (x - k*delta)/delta  (0..1 is this hop's span)
 xph = mathf(pnt, "FRACT", mathf(pnt, "ADD", mathf(pnt, "MULTIPLY", t_val.outputs[0], attr("freq")), attr("phase")))
 h = mathf(pnt, "DIVIDE", mathf(pnt, "SUBTRACT", xph, mathf(pnt, "MULTIPLY", attr("hop"), attr("delta"))), attr("delta"))
-dd = mathf(pnt, "SUBTRACT", h, u)                       # 머리 뒤쪽 거리(호 길이 비율)
+dd = mathf(pnt, "SUBTRACT", h, u)                       # distance behind the head (fraction of arc length)
 TRAIL = 0.55
 inside = mathf(pnt, "MULTIPLY", mathf(pnt, "GREATER_THAN", dd, -0.002), mathf(pnt, "LESS_THAN", dd, TRAIL))
 tail = mathf(pnt, "POWER", mathf(pnt, "SUBTRACT", 1.0, mathf(pnt, "DIVIDE", dd, TRAIL), clamp=True), 2.2)
@@ -225,14 +228,14 @@ pnt.links.new(cmix.outputs["Result"], emi.inputs["Color"])
 pnt.links.new(strength, emi.inputs["Strength"])
 pnt.links.new(emi.outputs[0], pout.inputs["Surface"])
 
-# time = 0→1 (1→N+1 프레임). 드라이버로 준다 (Blender 5.2 는 키프레임이 LINEAR 로 안 들어가 ease 됨)
+# time = 0→1 (frames 1→N+1). Supplied via driver (in Blender 5.2 keyframes don't take LINEAR and get eased)
 _fc = t_val.outputs[0].driver_add("default_value")
 _fc.driver.type = "SCRIPTED"
 _fc.driver.expression = f"(frame-1)/{N}"
 
 
 def arc_mesh(name, a, b, height, radius=0.0055, segs=64, sides=6):
-    """a->b 포물선 호 튜브. UV x = 길이 방향 0..1"""
+    """a->b parabolic arc tube. UV x = along the length, 0..1"""
     bm = bmesh.new()
     uv_layer = bm.loops.layers.uv.new("UVMap")
     rings = []
@@ -243,12 +246,12 @@ def arc_mesh(name, a, b, height, radius=0.0055, segs=64, sides=6):
         cx = ax + (bx - ax) * t
         cy = ay + (by - ay) * t
         cz = 4 * height * t * (1 - t) + radius
-        # 접선
+        # tangent
         tx, ty = bx - ax, by - ay
         tz = 4 * height * (1 - 2 * t)
         ln = math.sqrt(tx * tx + ty * ty + tz * tz)
         tx, ty, tz = tx / ln, ty / ln, tz / ln
-        # 수평 법선 n1, 그 외적 n2
+        # horizontal normal n1, its cross product n2
         hx, hy = -ty, tx
         hl = math.hypot(hx, hy) or 1.0
         n1 = (hx / hl, hy / hl, 0.0)
@@ -306,12 +309,12 @@ def node_marker(name, p, warm):
     return o
 
 
-# 타일 하나 안의 조회 경로(체인) 설계: 양옆에만, 노드 좌표는 격자 위
+# Lookup path (chain) design within one tile: sides only, node coordinates on the grid
 chains = []
 for side in (-1, 1):
     for c in range(3):
         n_hops = rng.choice([2, 3, 3, 4])
-        gx = side * (rng.randint(6, 12) if c == 0 else rng.randint(8, 22))              # 격자 칸 단위 x (|x| >= 3m)
+        gx = side * (rng.randint(6, 12) if c == 0 else rng.randint(8, 22))              # x in grid cells (|x| >= 3 m)
         gy = rng.randint(0, TILE_CELLS - 1) + c * 5
         pts = [(gx, gy)]
         for _ in range(n_hops):
@@ -324,12 +327,12 @@ for side in (-1, 1):
         chains.append(dict(pts=pts, phase=rng.random(), freq=rng.choice([1, 1, 2]),
                            warm=1.0 if rng.random() < 0.22 else 0.0))
 
-# 체인 하나가 y 로 최대 ~27m 뻗으므로 카메라 뒤쪽 타일도 넉넉히 둔다(이음매에서 사라지는 호가 없게).
-# 먼 쪽은 거리 감쇠 exp(-d/30) 로 160m 에서 0.5% -> 마지막 타일이 빠져도 보이지 않는다.
+# A single chain spans up to ~27 m in y, so keep generous tiles behind the camera too (no arc vanishing at the seam).
+# Far side falls off as exp(-d/30), 0.5% at 160 m -> dropping the last tile is invisible.
 COPIES = range(-5, 20)
 for ci, ch in enumerate(chains):
     n_h = len(ch["pts"]) - 1
-    delta = 0.55 / n_h                                   # 체인 전체가 사이클의 55% 동안 진행
+    delta = 0.55 / n_h                                   # whole chain plays over 55% of the cycle
     for j in COPIES:
         oy = j * TILE
         world_pts = [(gx * S, gy * S + oy) for gx, gy in ch["pts"]]
@@ -342,7 +345,7 @@ for ci, ch in enumerate(chains):
         for k, p in enumerate(world_pts):
             node_marker(f"node_{ci}_{j}_{k}", p, ch["warm"])
 
-# ---------------------------------------------------------------- 카메라: 클립 동안 정확히 TILE 만큼 전진
+# ---------------------------------------------------------------- Camera: advances exactly TILE over the clip
 cam_data = bpy.data.cameras.new("cam")
 cam_data.lens = 24
 cam_data.sensor_width = 36
@@ -352,12 +355,12 @@ scene.collection.objects.link(cam)
 scene.camera = cam
 cam.rotation_euler = (math.radians(90 - 6.5), 0, 0)
 cam.location = (0.0, -1.0, 1.05)
-_fc = cam.driver_add("location", 1)            # 선형 전진(드라이버): 151 프레임 = 1 프레임 + TILE
+_fc = cam.driver_add("location", 1)            # linear advance (driver): frame 151 = frame 1 + TILE
 _fc.driver.type = "SCRIPTED"
 _fc.driver.expression = f"-1.0+{TILE}*(frame-1)/{N}"
 
 
-# ---------------------------------------------------------------- 컴포지터 블룸
+# ---------------------------------------------------------------- Compositor bloom
 def add_bloom(strength=0.55, threshold=0.6, size=0.55):
     ng = bpy.data.node_groups.new("Comp", "CompositorNodeTree")
     ng.interface.new_socket("Image", in_out="OUTPUT", socket_type="NodeSocketColor")
@@ -377,13 +380,13 @@ def add_bloom(strength=0.55, threshold=0.6, size=0.55):
 try:
     add_bloom()
 except Exception as e:  # noqa: BLE001
-    print(f"[grid] bloom 건너뜀: {e}")
+    print(f"[grid] bloom skipped: {e}")
 
 scene.frame_set(args.still if args.still is not None else 1)
 if args.still is None and (args.start or args.end):
     scene.frame_start = args.start or 1
     scene.frame_end = args.end or N
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
-    bpy.ops.render.render(animation=True)      # 청크: 인코딩은 다 모은 뒤 따로
+    bpy.ops.render.render(animation=True)      # chunked: encode separately after all chunks are collected
 else:
     lib.render(args)
