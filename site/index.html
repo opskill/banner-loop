@@ -53,8 +53,12 @@
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
   .card .media { position: relative; aspect-ratio: 32 / 9; background: #000; }
   .card .media { overflow: hidden; touch-action: pan-y; --split: 50%; --ox: 50%; }
+  .card .media:fullscreen { width: 100vw; height: 100vh; aspect-ratio: auto; background: #000; }
+  .card .media:fullscreen video { object-fit: contain; }
+  .card .zbadge { position: absolute; bottom: 8px; left: 8px; font-size: 11px; background: rgba(0,0,0,.6); color: #dfe7ee; padding: 2px 8px; border-radius: 999px; pointer-events: none; }
+  .card .fs { background: none; border: 1px solid var(--line); color: var(--fg); border-radius: 6px; font: inherit; font-size: 12px; padding: 1px 8px; cursor: pointer; }
   .card video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
-    transform: scale(var(--zoom, 1)); transform-origin: var(--ox) 50%; }
+    transform: scale(var(--z, var(--zoom, 1))); transform-origin: var(--ox) var(--oy, 50%); }
   .card video.hi { clip-path: inset(0 0 0 var(--split)); }
   .mode-1920 .card video.hi { visibility: hidden; }
   .mode-4k .card video.lo { visibility: hidden; }
@@ -127,7 +131,7 @@
     </div>
     <label class="chk"><input type="checkbox" id="guide"> <span data-i18n="guide">show headline zone (centre 30 %)</span></label>
   </div>
-  <p class="hint" data-i18n="hint">Left half 1920×540, right half the AI 4× upscale — drag the divider. Both halves play the same frame; switching modes keeps the playback position. Zoom in to see the difference.</p>
+  <p class="hint" data-i18n="hint">Left 1920×540, right the AI 4× upscale — drag the divider. Zoom: pinch or Ctrl/⌥ + scroll on a clip, double-click for 3×, ⤢ for full screen.</p>
   <div class="grid" id="grid"></div>
 
   <h2 data-i18n="whyTitle">Why render 1920 and upscale</h2>
@@ -171,7 +175,7 @@ const T = {
   en: { navLoops:"Loops", navInstall:"Install", eyebrow:"Sample headline", h1:"Seamless loops,<br>made from code",
     heroSub:"The centre stays dark and calm so your HTML headline reads on every frame.",
     intro:document.querySelector('[data-i18n="intro"]').textContent,
-    loopsTitle:"The 10 loops", guide:"show headline zone (centre 30 %)", res4k:"3840×1080 (AI 4×)", modeCmp:"◀ Compare ▶", zoomFit:"Fit", hint:"Left half 1920×540, right half the AI 4× upscale — drag the divider. Both halves play the same frame; switching modes keeps the playback position. Zoom in to see the difference.",
+    loopsTitle:"The 10 loops", guide:"show headline zone (centre 30 %)", res4k:"3840×1080 (AI 4×)", modeCmp:"◀ Compare ▶", zoomFit:"Fit", hint:"Left 1920×540, right the AI 4× upscale — drag the divider. Zoom: pinch or Ctrl/⌥ + scroll on a clip (up to 8×), double-click for 3×, move the mouse to pan, ⤢ for full screen. Both halves stay on the same frame, and switching modes keeps the playback position.", fs:"⤢ Full screen",
     whyTitle:"Why render 1920 and upscale", s1b:"7–23 s / frame", s1:"Cycles at 1920×540 on an M2 Pro (17–57 min per loop)",
     s2b:"≈ 5 min 20 s", s2:"AI 4× upscale per loop, independent of scene complexity",
     s3b:"~3–3.5× faster", s3:"than rendering 3840×1080 directly (≈ 4× the pixels to path-trace)",
@@ -181,7 +185,7 @@ const T = {
   ko: { navLoops:"루프", navInstall:"설치", eyebrow:"예시 헤드라인", h1:"코드로 만든<br>끊김 없는 루프",
     heroSub:"가운데는 어둡고 차분하게 비워 두어 어느 프레임에서도 HTML 헤드라인이 잘 읽힙니다.",
     intro:"아래 영상은 모두 이음새가 보이지 않는 5초·150프레임 루프입니다. Blender 씬 스크립트를 Cycles로 1920×540에 렌더하고, Apple 기기 내장 초해상도로 3840×1080까지 키웠습니다. 스톡 영상도, 영상 속 글자나 로고도 없이 코드로 만든 형상과 CC0 텍스처 두 장만 썼습니다.",
-    loopsTitle:"루프 10종", guide:"헤드라인 자리 표시 (가운데 30%)", res4k:"3840×1080 (AI 4배)", modeCmp:"◀ 좌우 비교 ▶", zoomFit:"맞춤", hint:"왼쪽은 1920×540 원본, 오른쪽은 AI 4배 업스케일입니다. 경계선을 드래그해 옮길 수 있고, 양쪽은 같은 프레임을 재생합니다. 모드를 바꿔도 재생 위치가 그대로 이어지며, 확대하면 차이가 잘 보입니다.",
+    loopsTitle:"루프 10종", guide:"헤드라인 자리 표시 (가운데 30%)", res4k:"3840×1080 (AI 4배)", modeCmp:"◀ 좌우 비교 ▶", zoomFit:"맞춤", hint:"왼쪽은 1920×540 원본, 오른쪽은 AI 4배 업스케일. 경계선은 드래그로 옮깁니다. 확대: 영상 위에서 핀치 또는 Ctrl/⌥ + 스크롤 (최대 8배), 더블클릭하면 3배, 마우스를 움직이면 그 자리를 봅니다. ⤢ 전체 화면. 양쪽은 항상 같은 프레임이고, 모드를 바꿔도 재생 위치가 이어집니다.", fs:"⤢ 전체 화면",
     whyTitle:"왜 1920으로 렌더하고 업스케일하나", s1b:"프레임당 7–23초", s1:"M2 Pro에서 Cycles 1920×540 (루프당 17–57분)",
     s2b:"약 5분 20초", s2:"루프당 AI 4배 업스케일. 씬 복잡도와 무관",
     s3b:"약 3~3.5배 빠름", s3:"3840×1080으로 바로 렌더하는 것보다 (경로추적할 픽셀이 약 4배)",
@@ -266,9 +270,9 @@ for (const [k, name, , nameKo] of LOOPS) {
   el.className = "card";
   el.innerHTML = `<div class="media"><video class="lo" muted loop playsinline preload="none" poster="posters/${k}.jpg"></video>
     <video class="hi" muted loop playsinline preload="none"></video>
-    <div class="guide"></div><div class="divider"></div><span class="tag l">1920×540</span><span class="tag r">AI 4× · 3840×1080</span></div>
+    <div class="guide"></div><div class="divider"></div><span class="tag l">1920×540</span><span class="tag r">AI 4× · 3840×1080</span><span class="zbadge" hidden></span></div>
     <div class="meta"><b data-name-en="${name}" data-name-ko="${nameKo}">${name}</b><span data-meta>5 s · 150 frames</span>
-    <a href="${src(k, "1920")}" download>1920</a><a href="${src(k, "4k")}" download>4K</a></div>`;
+    <a href="${src(k, "1920")}" download>1920</a><a href="${src(k, "4k")}" download>4K</a><button type="button" class="fs" data-i18n="fs">⤢ Full screen</button></div>`;
   const media = el.querySelector(".media");
   const c = { el, media, lo: el.querySelector("video.lo"), hi: el.querySelector("video.hi") };
   c.lo.dataset.k = c.hi.dataset.k = k;
@@ -278,6 +282,22 @@ for (const [k, name, , nameKo] of LOOPS) {
     media.style.setProperty("--split", p + "%"); media.style.setProperty("--ox", p + "%"); };
   media.addEventListener("pointerdown", e => { if (mode !== "compare") return; media.setPointerCapture(e.pointerId); setSplit(e.clientX); });
   media.addEventListener("pointermove", e => { if (mode === "compare" && media.hasPointerCapture(e.pointerId)) setSplit(e.clientX); });
+  // zoom: wheel / trackpad pinch over the clip, the point under the cursor stays put; hover pans
+  const badge = el.querySelector(".zbadge");
+  c.z = 1;
+  const setZoom = z => { c.z = Math.min(8, Math.max(1, z)); media.style.setProperty("--z", c.z);
+    badge.hidden = c.z === 1; badge.textContent = c.z.toFixed(1) + "×"; };
+  const aim = e => { const r = media.getBoundingClientRect();
+    media.style.setProperty("--ox", ((e.clientX - r.left) / r.width * 100) + "%");
+    media.style.setProperty("--oy", ((e.clientY - r.top) / r.height * 100) + "%"); };
+  media.addEventListener("wheel", e => {
+    if (!e.ctrlKey && !e.altKey && c.z === 1 && !document.fullscreenElement) return;   // plain scroll keeps scrolling the page
+    e.preventDefault(); aim(e); setZoom(c.z * Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.002)));
+  }, { passive: false });
+  media.addEventListener("pointermove", e => { if (c.z > 1 && !media.hasPointerCapture(e.pointerId)) aim(e); });
+  media.addEventListener("dblclick", () => setZoom(c.z > 1 ? 1 : 3));
+  c.setZoom = setZoom;
+  el.querySelector(".fs").onclick = () => { media.requestFullscreen ? media.requestFullscreen() : media.webkitRequestFullscreen && media.webkitRequestFullscreen(); };
   grid.append(el); io.observe(media);
 }
 // keep the follower on the master's frame
@@ -303,7 +323,7 @@ document.querySelectorAll("#modes button").forEach(b => b.onclick = () => {
   }
 });
 document.querySelectorAll("#zooms button").forEach(b => b.onclick = () => {
-  zoom = +b.dataset.zoom; grid.style.setProperty("--zoom", zoom);
+  zoom = +b.dataset.zoom; cards.forEach(c => c.setZoom(zoom));
   document.querySelectorAll("#zooms button").forEach(x => x.setAttribute("aria-pressed", x === b));
 });
 applyLang();
