@@ -1,0 +1,14 @@
+{
+  "name": "banner-loop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Seamless 32:9 hero-banner loop videos from code: Blender scenes -> Cycles 1920x540 -> Apple AI 4x upscale -> 3840x1080",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "assets": "node bin/fetch-assets.mjs",
+    "loop": "bash tools/loop.sh",
+    "still": "bash tools/loop.sh --still 1 --scene"
+  },
+  "engines": { "node": ">=20" }
+}
