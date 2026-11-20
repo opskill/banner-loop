@@ -20,7 +20,8 @@
   header.top { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--line); }
   header.top img { width: 28px; height: 28px; border-radius: 7px; }
   header.top b { font-size: 16px; letter-spacing: .2px; }
-  header.top nav { margin-left: auto; display: flex; gap: 18px; font-size: 14px; }
+  header.top nav { margin-left: auto; display: flex; gap: 18px; font-size: 14px; align-items: center; }
+  .lang { background: none; border: 1px solid var(--line); color: var(--fg); border-radius: 999px; padding: 3px 10px; font: inherit; font-size: 13px; cursor: pointer; }
 
   /* hero: the banner itself, 32:9 */
   .hero { position: relative; width: 100%; aspect-ratio: 32 / 9; min-height: 300px; overflow: hidden; background: #000; }
@@ -75,49 +76,50 @@
   <img src="logo.svg" alt="">
   <b>banner-loop</b>
   <nav>
-    <a href="#loops">Loops</a>
-    <a href="#install" class="hide-sm">Install</a>
+    <a href="#loops" data-i18n="navLoops">Loops</a>
+    <a href="#install" class="hide-sm" data-i18n="navInstall">Install</a>
     <a href="https://github.com/opskill/banner-loop">GitHub</a>
+    <button type="button" id="lang" class="lang" aria-label="Language">한국어</button>
   </nav>
 </header>
 
 <section class="hero" id="hero" aria-roledescription="carousel" aria-label="Banner preview">
   <div class="copy">
-    <div class="eyebrow">Sample headline</div>
-    <h1>Seamless loops,<br>made from code</h1>
-    <p>The centre stays dark and calm so your HTML headline reads on every frame.</p>
+    <div class="eyebrow" data-i18n="eyebrow">Sample headline</div>
+    <h1 data-i18n-html="h1">Seamless loops,<br>made from code</h1>
+    <p data-i18n="heroSub">The centre stays dark and calm so your HTML headline reads on every frame.</p>
   </div>
   <div class="label" id="heroLabel"></div>
   <div class="dots" id="heroDots"></div>
 </section>
 
 <main>
-  <p class="lede">Every clip below is a 5-second, 150-frame loop that never shows a seam: Blender scene scripts rendered with
+  <p class="lede" data-i18n="intro">Every clip below is a 5-second, 150-frame loop that never shows a seam: Blender scene scripts rendered with
     Cycles at 1920×540, then upscaled to 3840×1080 with Apple's on-device super-resolution. No stock footage, no text or
     logos in the video — only procedural geometry and two CC0 textures.</p>
 
-  <h2 id="loops">The 10 loops</h2>
+  <h2 id="loops" data-i18n="loopsTitle">The 10 loops</h2>
   <div class="toolbar">
     <div class="seg" role="group" aria-label="Resolution">
       <button type="button" data-res="1920" aria-pressed="true">1920×540</button>
-      <button type="button" data-res="4k" aria-pressed="false">3840×1080 (AI 4×)</button>
+      <button type="button" data-res="4k" aria-pressed="false" data-i18n="res4k">3840×1080 (AI 4×)</button>
     </div>
-    <label class="chk"><input type="checkbox" id="guide"> show headline zone (centre 30 %)</label>
+    <label class="chk"><input type="checkbox" id="guide"> <span data-i18n="guide">show headline zone (centre 30 %)</span></label>
   </div>
   <div class="grid" id="grid"></div>
 
-  <h2>Why render 1920 and upscale</h2>
+  <h2 data-i18n="whyTitle">Why render 1920 and upscale</h2>
   <div class="cols">
-    <div class="stat"><b>7–23 s / frame</b><span>Cycles at 1920×540 on an M2 Pro (17–57 min per loop)</span></div>
-    <div class="stat"><b>≈ 5 min 20 s</b><span>AI 4× upscale per loop, independent of scene complexity</span></div>
-    <div class="stat"><b>~3–3.5× faster</b><span>than rendering 3840×1080 directly (≈ 4× the pixels to path-trace)</span></div>
+    <div class="stat"><b data-i18n="s1b">7–23 s / frame</b><span data-i18n="s1">Cycles at 1920×540 on an M2 Pro (17–57 min per loop)</span></div>
+    <div class="stat"><b data-i18n="s2b">≈ 5 min 20 s</b><span data-i18n="s2">AI 4× upscale per loop, independent of scene complexity</span></div>
+    <div class="stat"><b data-i18n="s3b">~3–3.5× faster</b><span data-i18n="s3">than rendering 3840×1080 directly (≈ 4× the pixels to path-trace)</span></div>
   </div>
 
-  <h2 id="install">Use it</h2>
-  <p class="lede">As a Claude Code plugin — then just ask “render the cable trays loop in 4K”:</p>
+  <h2 id="install" data-i18n="useTitle">Use it</h2>
+  <p class="lede" data-i18n="usePlugin">As a Claude Code plugin — then just ask “render the cable trays loop in 4K”:</p>
   <pre><code>claude plugin marketplace add opskill/banner-loop
 claude plugin install banner-loop@banner-loop</code></pre>
-  <p class="lede">Or from a clone (macOS 26+ for the 4K step, Blender 5.x, Node 20+, ffmpeg):</p>
+  <p class="lede" data-i18n="useClone">Or from a clone (macOS 26+ for the 4K step, Blender 5.x, Node 20+, ffmpeg):</p>
   <pre><code>git clone https://github.com/opskill/banner-loop && cd banner-loop
 npm run assets
 tools/loop.sh --scene concept_cable_trays --key 10_cable_trays</code></pre>
@@ -126,22 +128,59 @@ tools/loop.sh --scene concept_cable_trays --key 10_cable_trays</code></pre>
 <footer>
   MIT · scenes and pipeline by <a href="https://github.com/opskill">opskill</a> ·
   textures <a href="https://polyhaven.com/license">Poly Haven CC0</a> ·
-  <a href="https://github.com/opskill/banner-loop/releases">download the MP4s</a>
+  <a href="https://github.com/opskill/banner-loop/releases" data-i18n="dl">download the MP4s</a>
 </footer>
 
 <script>
 const LOOPS = [
-  ["10_cable_trays", "Cable trays", "50% 50%"],
-  ["06_gpu_macro", "GPU macro", "50% 50%"],
-  ["05_cloud_blocks", "Cloud blocks", "78% 50%"],
-  ["01_ix_hub", "IX hub", "50% 50%"],
-  ["03_cdn_planet", "CDN planet", "70% 80%"],
-  ["02_fiber_macro", "Fiber patch panel", "50% 50%"],
-  ["04_city_dataflow", "City data flow", "50% 50%"],
-  ["07_security_lattice", "Security lattice", "50% 50%"],
-  ["08_domain_grid", "Domain grid", "50% 50%"],
-  ["09_rack_closeup", "Rack close-up", "50% 50%"],
+  ["10_cable_trays", "Cable trays", "50% 50%", "케이블 트레이"],
+  ["06_gpu_macro", "GPU macro", "50% 50%", "GPU 매크로"],
+  ["05_cloud_blocks", "Cloud blocks", "78% 50%", "클라우드 블록"],
+  ["01_ix_hub", "IX hub", "50% 50%", "IX 허브"],
+  ["03_cdn_planet", "CDN planet", "70% 80%", "CDN 행성"],
+  ["02_fiber_macro", "Fiber patch panel", "50% 50%", "광 패치 패널"],
+  ["04_city_dataflow", "City data flow", "50% 50%", "도시 데이터 흐름"],
+  ["07_security_lattice", "Security lattice", "50% 50%", "보안 격자"],
+  ["08_domain_grid", "Domain grid", "50% 50%", "도메인 그리드"],
+  ["09_rack_closeup", "Rack close-up", "50% 50%", "랙 클로즈업"],
 ];
+
+const T = {
+  en: { navLoops:"Loops", navInstall:"Install", eyebrow:"Sample headline", h1:"Seamless loops,<br>made from code",
+    heroSub:"The centre stays dark and calm so your HTML headline reads on every frame.",
+    intro:document.querySelector('[data-i18n="intro"]').textContent,
+    loopsTitle:"The 10 loops", guide:"show headline zone (centre 30 %)", res4k:"3840×1080 (AI 4×)",
+    whyTitle:"Why render 1920 and upscale", s1b:"7–23 s / frame", s1:"Cycles at 1920×540 on an M2 Pro (17–57 min per loop)",
+    s2b:"≈ 5 min 20 s", s2:"AI 4× upscale per loop, independent of scene complexity",
+    s3b:"~3–3.5× faster", s3:"than rendering 3840×1080 directly (≈ 4× the pixels to path-trace)",
+    useTitle:"Use it", usePlugin:"As a Claude Code plugin — then just ask “render the cable trays loop in 4K”:",
+    useClone:"Or from a clone (macOS 26+ for the 4K step, Blender 5.x, Node 20+, ffmpeg):", dl:"download the MP4s",
+    meta:"5 s · 150 frames", switchTo:"한국어" },
+  ko: { navLoops:"루프", navInstall:"설치", eyebrow:"예시 헤드라인", h1:"코드로 만든<br>끊김 없는 루프",
+    heroSub:"가운데는 어둡고 차분하게 비워 두어 어느 프레임에서도 HTML 헤드라인이 잘 읽힙니다.",
+    intro:"아래 영상은 모두 이음새가 보이지 않는 5초·150프레임 루프입니다. Blender 씬 스크립트를 Cycles로 1920×540에 렌더하고, Apple 기기 내장 초해상도로 3840×1080까지 키웠습니다. 스톡 영상도, 영상 속 글자나 로고도 없이 코드로 만든 형상과 CC0 텍스처 두 장만 썼습니다.",
+    loopsTitle:"루프 10종", guide:"헤드라인 자리 표시 (가운데 30%)", res4k:"3840×1080 (AI 4배)",
+    whyTitle:"왜 1920으로 렌더하고 업스케일하나", s1b:"프레임당 7–23초", s1:"M2 Pro에서 Cycles 1920×540 (루프당 17–57분)",
+    s2b:"약 5분 20초", s2:"루프당 AI 4배 업스케일. 씬 복잡도와 무관",
+    s3b:"약 3~3.5배 빠름", s3:"3840×1080으로 바로 렌더하는 것보다 (경로추적할 픽셀이 약 4배)",
+    useTitle:"사용법", usePlugin:"Claude Code 플러그인으로 설치한 뒤 “케이블 트레이 루프 4K로 렌더해줘”처럼 말로 시키면 됩니다:",
+    useClone:"또는 클론해서 직접 (4K 단계는 macOS 26+, Blender 5.x, Node 20+, ffmpeg):", dl:"MP4 내려받기",
+    meta:"5초 · 150프레임", switchTo:"English" },
+};
+let lang = (() => { const q = new URLSearchParams(location.search).get("lang");
+  if (q === "ko" || q === "en") return q;
+  try { const s = localStorage.getItem("lang"); if (s) return s; } catch (e) {}
+  return (navigator.language || "").toLowerCase().startsWith("ko") ? "ko" : "en"; })();
+function applyLang() {
+  const d = T[lang]; document.documentElement.lang = lang;
+  document.querySelectorAll("[data-i18n]").forEach(el => { const v = d[el.dataset.i18n]; if (v != null) el.textContent = v; });
+  document.querySelectorAll("[data-i18n-html]").forEach(el => { el.innerHTML = d[el.dataset.i18nHtml]; });
+  document.querySelectorAll("[data-name-en]").forEach(el => { el.textContent = lang === "ko" ? el.dataset.nameKo : el.dataset.nameEn; });
+  document.querySelectorAll("[data-meta]").forEach(el => { el.textContent = d.meta; });
+  document.getElementById("lang").textContent = d.switchTo;
+  if (typeof cur === "number" && cur >= 0) label.textContent = lang === "ko" ? heroSet[cur][3] : heroSet[cur][1];
+}
+document.getElementById("lang").onclick = () => { lang = lang === "ko" ? "en" : "ko"; try { localStorage.setItem("lang", lang); } catch (e) {} applyLang(); };
 const src = (k, res) => `videos/${k}_${res === "4k" ? "3840x1080" : "1920x540"}.mp4`;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const wide = () => innerWidth * devicePixelRatio > 2200 && !(navigator.connection && navigator.connection.saveData);
@@ -170,7 +209,7 @@ function show(i) {
   v.currentTime = 0; v.play().catch(() => {});
   vids.forEach((x, j) => x.classList.toggle("on", j === i));
   [...dots.children].forEach((d, j) => d.setAttribute("aria-current", j === i));
-  label.textContent = heroSet[i][1];
+  label.textContent = lang === "ko" ? heroSet[i][3] : heroSet[i][1];
   const prev = vids[cur]; cur = i;
   if (prev) setTimeout(() => prev !== vids[cur] && prev.pause(), 1000);
   const next = vids[(i + 1) % vids.length]; if (!next.src) { next.src = next.dataset.src; next.preload = "auto"; }
@@ -186,11 +225,11 @@ const io = new IntersectionObserver(es => es.forEach(e => {
   if (e.isIntersecting) { if (!v.src || v.dataset.res !== res) { v.src = src(v.dataset.k, res); v.dataset.res = res; } if (!reduce) v.play().catch(() => {}); }
   else v.pause();
 }), { rootMargin: "100px" });
-for (const [k, name] of LOOPS) {
+for (const [k, name, , nameKo] of LOOPS) {
   const c = document.createElement("article");
   c.className = "card";
   c.innerHTML = `<div class="media"><video muted loop playsinline preload="none" poster="posters/${k}.jpg"></video><div class="guide"></div></div>
-    <div class="meta"><b>${name}</b><span>5 s · 150 frames</span>
+    <div class="meta"><b data-name-en="${name}" data-name-ko="${nameKo}">${name}</b><span data-meta>5 s · 150 frames</span>
     <a href="${src(k, "1920")}" download>1920</a><a href="${src(k, "4k")}" download>4K</a></div>`;
   const v = c.querySelector("video"); v.dataset.k = k;
   grid.append(c); io.observe(v);
@@ -200,6 +239,7 @@ document.querySelectorAll(".seg button").forEach(b => b.onclick = () => {
   document.querySelectorAll(".seg button").forEach(x => x.setAttribute("aria-pressed", x === b));
   grid.querySelectorAll("video").forEach(v => { io.unobserve(v); io.observe(v); });
 });
+applyLang();
 document.getElementById("guide").onchange = e => document.body.classList.toggle("show-guide", e.target.checked);
 </script>
 </body>

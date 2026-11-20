@@ -2,13 +2,15 @@
 
 # banner-loop
 
+**English** · [한국어](README.ko.md)
+
 Seamless **32:9 hero-banner loop videos made entirely from code**: Blender scene scripts → Cycles at 1920×540 →
 Apple's on-device AI super-resolution (4×) → 3840×1080 MP4, with loop QC numbers for every render.
 
 Built for website hero banners: 5-second loops that never show a seam, keep the centre dark and calm for an HTML
 headline, move gently, and contain no text or logos.
 
-**[▶ Live demo](https://banner-loop-demo.vercel.app)** · [download the MP4s](https://github.com/opskill/banner-loop/releases/tag/v0.1.0) · [한국어 요약](#한국어-요약)
+**[▶ Live demo](https://banner-loop-demo.vercel.app)** · [download the MP4s](https://github.com/opskill/banner-loop/releases/tag/v0.1.0)
 
 ![Cable trays loop](docs/examples/10_cable_trays.gif)
 
@@ -38,7 +40,7 @@ Rendering works on any Blender platform; only the 4K upscale step is macOS-only 
 ## Quick start
 
 ```bash
-git clone <this repo> && cd banner-loop
+git clone https://github.com/opskill/banner-loop && cd banner-loop
 npm run assets                       # two CC0 textures from Poly Haven (cable trays, rack close-up)
 export BLENDER_BIN=/Applications/Blender.app/Contents/MacOS/Blender
 
@@ -128,21 +130,3 @@ Rules: no text/logos, calm dark centre, integer periods over the loop, fixed see
 - If you add assets: use CC0 or licenses that allow commercial use, record source/license/author in `manifest.json`,
   credit CC-BY works where the video is published, and never use paid-marketplace, "personal use only", NC/ND,
   or unclear-provenance assets, or real company logos.
-
-## 한국어 요약
-
-코드만으로 32:9 홈페이지 히어로 배너용 5초 무한 루프 영상을 만드는 파이프라인입니다.
-
-- Blender 씬 스크립트 10종을 1920×540으로 Cycles 렌더합니다.
-- macOS 내장 AI 초해상도(4배)로 키운 뒤 3840×1080으로 줄여 4K mp4를 만듭니다.
-- 루프 이음새, 가운데(헤드라인 자리) 밝기, 밝기 출렁임을 수치로 점검합니다.
-
-```bash
-npm run assets
-tools/loop.sh --scene concept_cable_trays --key 10_cable_trays
-```
-
-- `--frames`, `--spp`, `--still`, `--resume`, `--upscale none` 같은 옵션은 위 표를 참고하세요.
-- 4K로 바로 렌더하는 것보다 약 3~3.5배 빠릅니다.
-- 데모: https://banner-loop-demo.vercel.app · 예제 mp4: Releases v0.1.0
-- Claude Code 플러그인으로 설치: `claude plugin marketplace add opskill/banner-loop` → `claude plugin install banner-loop@banner-loop`. 이후 "케이블 트레이 4K로 렌더해줘"처럼 말로 시키면 됩니다.
