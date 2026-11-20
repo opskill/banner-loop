@@ -52,13 +52,9 @@
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 560px), 1fr)); gap: 18px; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
   .card .media { position: relative; aspect-ratio: 32 / 9; background: #000; }
-  .card .media { overflow: hidden; touch-action: pan-y; --split: 50%; --ox: 50%; }
-  .card .media:fullscreen { width: 100vw; height: 100vh; aspect-ratio: auto; background: #000; }
-  .card .media:fullscreen video { object-fit: contain; }
-  .card .zbadge { position: absolute; bottom: 8px; left: 8px; font-size: 11px; background: rgba(0,0,0,.6); color: #dfe7ee; padding: 2px 8px; border-radius: 999px; pointer-events: none; }
+  .card .media { overflow: hidden; touch-action: pan-y; --split: 50%; }
   .card .fs { background: none; border: 1px solid var(--line); color: var(--fg); border-radius: 6px; font: inherit; font-size: 12px; padding: 1px 8px; cursor: pointer; }
-  .card video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
-    transform: scale(var(--z, var(--zoom, 1))); transform-origin: var(--ox) var(--oy, 50%); }
+  .card video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .card video.hi { clip-path: inset(0 0 0 var(--split)); }
   .mode-1920 .card video.hi { visibility: hidden; }
   .mode-4k .card video.lo { visibility: hidden; }
@@ -72,6 +68,31 @@
   .mode-compare .card .divider, .mode-compare .card .tag { display: block; }
   .mode-compare .card .media { cursor: ew-resize; }
   .hint { color: var(--muted); font-size: 13px; margin: -6px 0 14px; }
+  /* zoom viewer */
+  #viewer { position: fixed; inset: 0; z-index: 50; background: rgba(3,5,8,.96); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 12px 16px; }
+  #viewer[hidden] { display: none; }
+  .vbar { width: min(100%, 1800px); display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; font-size: 14px; }
+  .vbar b { margin-right: auto; }
+  .vbar button { background: var(--panel); border: 1px solid var(--line); color: var(--fg); border-radius: 8px; font: inherit; font-size: 13px; padding: 5px 11px; cursor: pointer; }
+  .vbar button[aria-pressed="true"] { border-color: var(--acc); color: var(--acc); }
+  .vbar .zv { min-width: 3.5em; text-align: center; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .vstage { position: relative; width: min(calc(100vw - 32px), calc((100vh - 140px) * 32 / 9)); aspect-ratio: 32 / 9; overflow: hidden; background: #000;
+    border-radius: 8px; touch-action: none; cursor: grab; --split: 50%; }
+  .vstage.drag { cursor: grabbing; }
+  .vlayer { position: absolute; inset: 0; }
+  .vlayer.hi { clip-path: inset(0 0 0 var(--split)); }
+  .vlayer video { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; transform-origin: 0 0; will-change: transform; }
+  #viewer.m-1920 .vlayer.hi { visibility: hidden; }
+  #viewer.m-4k .vlayer.lo { visibility: hidden; }
+  #viewer.m-4k .vlayer.hi { clip-path: none; }
+  .vdiv { position: absolute; top: 0; bottom: 0; left: var(--split); width: 28px; margin-left: -14px; cursor: ew-resize; display: none; }
+  .vdiv::before { content: ""; position: absolute; top: 0; bottom: 0; left: 13px; width: 2px; background: var(--acc); box-shadow: 0 0 0 1px rgba(0,0,0,.4); }
+  .vdiv::after { content: "◀ ▶"; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--acc); color: #061015;
+    font-size: 11px; font-weight: 700; padding: 5px 8px; border-radius: 999px; white-space: nowrap; }
+  #viewer.m-compare .vdiv, #viewer.m-compare .vtag { display: block; }
+  .vtag { position: absolute; top: 10px; font-size: 12px; background: rgba(0,0,0,.6); color: #dfe7ee; padding: 3px 9px; border-radius: 999px; display: none; pointer-events: none; }
+  .vtag.l { left: 10px; } .vtag.r { right: 10px; color: var(--acc); }
+  .vhint { color: var(--muted); font-size: 12px; margin: 0; text-align: center; }
   .card .guide { position: absolute; top: 0; bottom: 0; left: 35%; width: 30%; border-left: 1px dashed rgba(111,240,226,.55);
     border-right: 1px dashed rgba(111,240,226,.55); background: rgba(111,240,226,.05); display: none; }
   .show-guide .card .guide { display: block; }
@@ -124,14 +145,18 @@
       <button type="button" data-mode="compare" aria-pressed="true" data-i18n="modeCmp">◀ Compare ▶</button>
       <button type="button" data-mode="4k" aria-pressed="false" data-i18n="res4k">3840×1080 (AI 4×)</button>
     </div>
-    <div class="seg" role="group" aria-label="Zoom" id="zooms">
-      <button type="button" data-zoom="1" aria-pressed="true" data-i18n="zoomFit">Fit</button>
-      <button type="button" data-zoom="2" aria-pressed="false">2×</button>
-      <button type="button" data-zoom="4" aria-pressed="false">4×</button>
-    </div>
     <label class="chk"><input type="checkbox" id="guide"> <span data-i18n="guide">show headline zone (centre 30 %)</span></label>
   </div>
-  <p class="hint" data-i18n="hint">Left 1920×540, right the AI 4× upscale — drag the divider. Zoom: pinch or Ctrl/⌥ + scroll on a clip, double-click for 3×, ⤢ for full screen.</p>
+  <p class="hint" data-i18n="hint">Left 1920×540, right the AI 4× upscale — drag the divider. Click a clip (or 🔍) to open the zoom viewer.</p>
+  <div id="viewer" hidden role="dialog" aria-modal="true" aria-label="Zoom viewer">
+    <div class="vbar"><b id="vname"></b>
+      <button type="button" data-vm="1920">1920×540</button><button type="button" data-vm="compare" data-i18n="modeCmp">◀ Compare ▶</button><button type="button" data-vm="4k" data-i18n="res4k">3840×1080 (AI 4×)</button>
+      <button type="button" id="vzout" aria-label="Zoom out">−</button><span class="zv" id="vz">1.0×</span><button type="button" id="vzin" aria-label="Zoom in">+</button>
+      <button type="button" id="vfit" data-i18n="zoomFit">Fit</button><button type="button" id="v11">1:1</button><button type="button" id="vfs" data-i18n="vfs">⛶</button><button type="button" id="vclose" aria-label="Close">✕</button></div>
+    <div class="vstage" id="vstage"><div class="vlayer lo"><video muted loop playsinline></video></div><div class="vlayer hi"><video muted loop playsinline></video></div>
+      <div class="vdiv" id="vdiv"></div><span class="vtag l">1920×540</span><span class="vtag r">AI 4× · 3840×1080</span></div>
+    <p class="vhint" data-i18n="vhint">Scroll / pinch to zoom at the cursor · drag to pan · drag ◀ ▶ to move the divider · double-click 3× · Esc to close</p>
+  </div>
   <div class="grid" id="grid"></div>
 
   <h2 data-i18n="whyTitle">Why render 1920 and upscale</h2>
@@ -175,7 +200,7 @@ const T = {
   en: { navLoops:"Loops", navInstall:"Install", eyebrow:"Sample headline", h1:"Seamless loops,<br>made from code",
     heroSub:"The centre stays dark and calm so your HTML headline reads on every frame.",
     intro:document.querySelector('[data-i18n="intro"]').textContent,
-    loopsTitle:"The 10 loops", guide:"show headline zone (centre 30 %)", res4k:"3840×1080 (AI 4×)", modeCmp:"◀ Compare ▶", zoomFit:"Fit", hint:"Left 1920×540, right the AI 4× upscale — drag the divider. Zoom: pinch or Ctrl/⌥ + scroll on a clip (up to 8×), double-click for 3×, move the mouse to pan, ⤢ for full screen. Both halves stay on the same frame, and switching modes keeps the playback position.", fs:"⤢ Full screen",
+    loopsTitle:"The 10 loops", guide:"show headline zone (centre 30 %)", res4k:"3840×1080 (AI 4×)", modeCmp:"◀ Compare ▶", zoomFit:"Fit", hint:"Left 1920×540, right the AI 4× upscale — drag the divider. Both halves stay on the same frame and switching modes keeps the playback position. Click a clip (or 🔍 Zoom) to open the zoom viewer.", fs:"🔍 Zoom", vfs:"⛶ Full screen", vhint:"Scroll / pinch to zoom at the cursor · drag to pan · drag ◀ ▶ to move the divider · double-click 3× · 1:1 = native 4K pixels · Esc to close",
     whyTitle:"Why render 1920 and upscale", s1b:"7–23 s / frame", s1:"Cycles at 1920×540 on an M2 Pro (17–57 min per loop)",
     s2b:"≈ 5 min 20 s", s2:"AI 4× upscale per loop, independent of scene complexity",
     s3b:"~3–3.5× faster", s3:"than rendering 3840×1080 directly (≈ 4× the pixels to path-trace)",
@@ -185,7 +210,7 @@ const T = {
   ko: { navLoops:"루프", navInstall:"설치", eyebrow:"예시 헤드라인", h1:"코드로 만든<br>끊김 없는 루프",
     heroSub:"가운데는 어둡고 차분하게 비워 두어 어느 프레임에서도 HTML 헤드라인이 잘 읽힙니다.",
     intro:"아래 영상은 모두 이음새가 보이지 않는 5초·150프레임 루프입니다. Blender 씬 스크립트를 Cycles로 1920×540에 렌더하고, Apple 기기 내장 초해상도로 3840×1080까지 키웠습니다. 스톡 영상도, 영상 속 글자나 로고도 없이 코드로 만든 형상과 CC0 텍스처 두 장만 썼습니다.",
-    loopsTitle:"루프 10종", guide:"헤드라인 자리 표시 (가운데 30%)", res4k:"3840×1080 (AI 4배)", modeCmp:"◀ 좌우 비교 ▶", zoomFit:"맞춤", hint:"왼쪽은 1920×540 원본, 오른쪽은 AI 4배 업스케일. 경계선은 드래그로 옮깁니다. 확대: 영상 위에서 핀치 또는 Ctrl/⌥ + 스크롤 (최대 8배), 더블클릭하면 3배, 마우스를 움직이면 그 자리를 봅니다. ⤢ 전체 화면. 양쪽은 항상 같은 프레임이고, 모드를 바꿔도 재생 위치가 이어집니다.", fs:"⤢ 전체 화면",
+    loopsTitle:"루프 10종", guide:"헤드라인 자리 표시 (가운데 30%)", res4k:"3840×1080 (AI 4배)", modeCmp:"◀ 좌우 비교 ▶", zoomFit:"맞춤", hint:"왼쪽은 1920×540 원본, 오른쪽은 AI 4배 업스케일. 경계선은 드래그로 옮깁니다. 양쪽은 항상 같은 프레임이고 모드를 바꿔도 재생 위치가 이어집니다. 영상을 클릭하거나 🔍 확대를 누르면 확대 뷰어가 열립니다.", fs:"🔍 확대", vfs:"⛶ 전체 화면", vhint:"스크롤·핀치로 커서 위치 확대 · 드래그로 이동 · ◀ ▶ 드래그로 경계 이동 · 더블클릭 3배 · 1:1 = 4K 원래 픽셀 · Esc 닫기",
     whyTitle:"왜 1920으로 렌더하고 업스케일하나", s1b:"프레임당 7–23초", s1:"M2 Pro에서 Cycles 1920×540 (루프당 17–57분)",
     s2b:"약 5분 20초", s2:"루프당 AI 4배 업스케일. 씬 복잡도와 무관",
     s3b:"약 3~3.5배 빠름", s3:"3840×1080으로 바로 렌더하는 것보다 (경로추적할 픽셀이 약 4배)",
@@ -245,7 +270,7 @@ show(0); restart();
 
 // grid: left = 1920 render, right = AI 4x upscale, same frame; only on-screen cards play
 const grid = document.getElementById("grid");
-let mode = "compare", zoom = 1;
+let mode = "compare";
 document.body.classList.add("mode-compare");
 const cards = [];
 const visible = new Set();
@@ -270,34 +295,24 @@ for (const [k, name, , nameKo] of LOOPS) {
   el.className = "card";
   el.innerHTML = `<div class="media"><video class="lo" muted loop playsinline preload="none" poster="posters/${k}.jpg"></video>
     <video class="hi" muted loop playsinline preload="none"></video>
-    <div class="guide"></div><div class="divider"></div><span class="tag l">1920×540</span><span class="tag r">AI 4× · 3840×1080</span><span class="zbadge" hidden></span></div>
+    <div class="guide"></div><div class="divider"></div><span class="tag l">1920×540</span><span class="tag r">AI 4× · 3840×1080</span></div>
     <div class="meta"><b data-name-en="${name}" data-name-ko="${nameKo}">${name}</b><span data-meta>5 s · 150 frames</span>
-    <a href="${src(k, "1920")}" download>1920</a><a href="${src(k, "4k")}" download>4K</a><button type="button" class="fs" data-i18n="fs">⤢ Full screen</button></div>`;
+    <a href="${src(k, "1920")}" download>1920</a><a href="${src(k, "4k")}" download>4K</a><button type="button" class="fs" data-i18n="fs">🔍 Zoom</button></div>`;
   const media = el.querySelector(".media");
   const c = { el, media, lo: el.querySelector("video.lo"), hi: el.querySelector("video.hi") };
   c.lo.dataset.k = c.hi.dataset.k = k;
   media._card = c; cards.push(c);
   // drag the divider (compare mode)
   const setSplit = x => { const r = media.getBoundingClientRect(); const p = Math.min(100, Math.max(0, (x - r.left) / r.width * 100));
-    media.style.setProperty("--split", p + "%"); media.style.setProperty("--ox", p + "%"); };
-  media.addEventListener("pointerdown", e => { if (mode !== "compare") return; media.setPointerCapture(e.pointerId); setSplit(e.clientX); });
-  media.addEventListener("pointermove", e => { if (mode === "compare" && media.hasPointerCapture(e.pointerId)) setSplit(e.clientX); });
-  // zoom: wheel / trackpad pinch over the clip, the point under the cursor stays put; hover pans
-  const badge = el.querySelector(".zbadge");
-  c.z = 1;
-  const setZoom = z => { c.z = Math.min(8, Math.max(1, z)); media.style.setProperty("--z", c.z);
-    badge.hidden = c.z === 1; badge.textContent = c.z.toFixed(1) + "×"; };
-  const aim = e => { const r = media.getBoundingClientRect();
-    media.style.setProperty("--ox", ((e.clientX - r.left) / r.width * 100) + "%");
-    media.style.setProperty("--oy", ((e.clientY - r.top) / r.height * 100) + "%"); };
-  media.addEventListener("wheel", e => {
-    if (!e.ctrlKey && !e.altKey && c.z === 1 && !document.fullscreenElement) return;   // plain scroll keeps scrolling the page
-    e.preventDefault(); aim(e); setZoom(c.z * Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.002)));
-  }, { passive: false });
-  media.addEventListener("pointermove", e => { if (c.z > 1 && !media.hasPointerCapture(e.pointerId)) aim(e); });
-  media.addEventListener("dblclick", () => setZoom(c.z > 1 ? 1 : 3));
-  c.setZoom = setZoom;
-  el.querySelector(".fs").onclick = () => { media.requestFullscreen ? media.requestFullscreen() : media.webkitRequestFullscreen && media.webkitRequestFullscreen(); };
+    media.style.setProperty("--split", p + "%"); };
+  let down = null;   // a tap opens the viewer; a drag moves the divider
+  media.addEventListener("pointerdown", e => { down = { x: e.clientX, moved: false }; media.setPointerCapture(e.pointerId); });
+  media.addEventListener("pointermove", e => { if (!down || !media.hasPointerCapture(e.pointerId)) return;
+    if (Math.abs(e.clientX - down.x) > 5) down.moved = true;
+    if (down.moved && mode === "compare") setSplit(e.clientX); });
+  media.addEventListener("pointerup", () => { if (down && !down.moved) openViewer(c); down = null; });
+  c.name = [name, nameKo];
+  el.querySelector(".fs").onclick = () => openViewer(c);
   grid.append(el); io.observe(media);
 }
 // keep the follower on the master's frame
@@ -322,10 +337,93 @@ document.querySelectorAll("#modes button").forEach(b => b.onclick = () => {
     if (visible.has(c)) playCard(c);
   }
 });
-document.querySelectorAll("#zooms button").forEach(b => b.onclick = () => {
-  zoom = +b.dataset.zoom; cards.forEach(c => c.setZoom(zoom));
-  document.querySelectorAll("#zooms button").forEach(x => x.setAttribute("aria-pressed", x === b));
+
+// ---- zoom viewer: both layers share one transform (translate + scale), the divider stays in screen space
+const viewer = document.getElementById("viewer"), stage = document.getElementById("vstage");
+const vlo = stage.querySelector(".lo video"), vhi = stage.querySelector(".hi video");
+let vmode = "compare", vz = 1, tx = 0, ty = 0, vcard = null, lastFocus = null;
+const vmaster = () => vmode === "4k" ? vhi : vlo, vfollower = () => vmode === "compare" ? (vmaster() === vlo ? vhi : vlo) : null;
+function vapply() {
+  const r = stage.getBoundingClientRect();
+  tx = Math.min(0, Math.max(r.width - r.width * vz, tx)); ty = Math.min(0, Math.max(r.height - r.height * vz, ty));
+  const tf = `translate(${tx}px, ${ty}px) scale(${vz})`;
+  vlo.style.transform = vhi.style.transform = tf;
+  document.getElementById("vz").textContent = vz.toFixed(1) + "×";
+}
+function zoomAt(z, cx, cy) {   // cx, cy: point in stage coords that must stay put
+  z = Math.min(12, Math.max(1, z));
+  tx = cx - (cx - tx) * (z / vz); ty = cy - (cy - ty) * (z / vz); vz = z; vapply();
+}
+const centre = () => { const r = stage.getBoundingClientRect(); return [r.width / 2, r.height / 2]; };
+function setVMode(m) {
+  const was = vmaster(); vmode = m; const now = vmaster();
+  if (now !== was) now.currentTime = was.currentTime;
+  viewer.className = "m-" + vmode;
+  viewer.querySelectorAll("[data-vm]").forEach(b => b.setAttribute("aria-pressed", b.dataset.vm === vmode));
+  now.play().catch(() => {}); const f = vfollower();
+  if (f) { f.currentTime = now.currentTime; f.play().catch(() => {}); } else (now === vlo ? vhi : vlo).pause();
+}
+function openViewer(c) {
+  vcard = c; lastFocus = document.activeElement;
+  const t0 = master(c).currentTime || 0;
+  vlo.src = src(c.lo.dataset.k, "1920"); vhi.src = src(c.lo.dataset.k, "4k");
+  for (const v of [vlo, vhi]) v.addEventListener("loadedmetadata", () => { v.currentTime = vmaster().readyState >= 1 && v !== vmaster() ? vmaster().currentTime : t0; }, { once: true });
+  document.getElementById("vname").textContent = lang === "ko" ? c.name[1] : c.name[0];
+  stage.style.setProperty("--split", c.media.style.getPropertyValue("--split") || "50%");
+  viewer.hidden = false; document.body.style.overflow = "hidden";
+  vz = 1; tx = ty = 0; vapply(); setVMode(mode);
+  c.lo.pause(); c.hi.pause();
+  document.getElementById("vclose").focus();
+}
+function closeViewer() {
+  if (viewer.hidden) return;
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  const t1 = vmaster().currentTime;
+  vlo.pause(); vhi.pause(); vlo.removeAttribute("src"); vhi.removeAttribute("src"); vlo.load(); vhi.load();
+  viewer.hidden = true; document.body.style.overflow = "";
+  if (vcard) { master(vcard).currentTime = t1; if (visible.has(vcard)) playCard(vcard); }
+  if (lastFocus) lastFocus.focus();
+}
+viewer.querySelectorAll("[data-vm]").forEach(b => b.onclick = () => setVMode(b.dataset.vm));
+document.getElementById("vzin").onclick = () => zoomAt(vz * 1.5, ...centre());
+document.getElementById("vzout").onclick = () => zoomAt(vz / 1.5, ...centre());
+document.getElementById("vfit").onclick = () => { vz = 1; tx = ty = 0; vapply(); };
+document.getElementById("v11").onclick = () => zoomAt(3840 / (stage.getBoundingClientRect().width * devicePixelRatio), ...centre());
+document.getElementById("vfs").onclick = () => document.fullscreenElement ? document.exitFullscreen() : viewer.requestFullscreen && viewer.requestFullscreen();
+document.getElementById("vclose").onclick = closeViewer;
+viewer.addEventListener("click", e => { if (e.target === viewer) closeViewer(); });
+addEventListener("keydown", e => { if (viewer.hidden) return;
+  if (e.key === "Escape") closeViewer(); else if (e.key === "+" || e.key === "=") zoomAt(vz * 1.5, ...centre());
+  else if (e.key === "-") zoomAt(vz / 1.5, ...centre()); else if (e.key === "0") document.getElementById("vfit").click(); });
+addEventListener("resize", () => !viewer.hidden && vapply());
+const pt = e => { const r = stage.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+stage.addEventListener("wheel", e => { e.preventDefault(); zoomAt(vz * Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0025)), ...pt(e)); }, { passive: false });
+stage.addEventListener("dblclick", e => vz > 1.05 ? document.getElementById("vfit").click() : zoomAt(3, ...pt(e)));
+// pointers: divider drag, one-finger/mouse pan, two-finger pinch
+const ptrs = new Map(); let dragDiv = false, pinch = null;
+const vdiv = document.getElementById("vdiv");
+vdiv.addEventListener("pointerdown", e => { e.stopPropagation(); dragDiv = true; vdiv.setPointerCapture(e.pointerId); });
+vdiv.addEventListener("pointermove", e => { if (!dragDiv) return; const r = stage.getBoundingClientRect();
+  stage.style.setProperty("--split", Math.min(100, Math.max(0, (e.clientX - r.left) / r.width * 100)) + "%"); });
+vdiv.addEventListener("pointerup", () => { dragDiv = false; });
+stage.addEventListener("pointerdown", e => { ptrs.set(e.pointerId, pt(e)); stage.setPointerCapture(e.pointerId); stage.classList.add("drag");
+  if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), z: vz }; } });
+stage.addEventListener("pointermove", e => {
+  if (!ptrs.has(e.pointerId)) return;
+  const prev = ptrs.get(e.pointerId), now = pt(e); ptrs.set(e.pointerId, now);
+  if (ptrs.size === 2 && pinch) { const [a, b] = [...ptrs.values()];
+    zoomAt(pinch.z * Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch.d, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); }
+  else if (ptrs.size === 1) { tx += now[0] - prev[0]; ty += now[1] - prev[1]; vapply(); }
 });
+const lift = e => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = null; if (!ptrs.size) stage.classList.remove("drag"); };
+stage.addEventListener("pointerup", lift); stage.addEventListener("pointercancel", lift);
+(function vsync() {
+  if (!viewer.hidden) { const m = vmaster(), f = vfollower();
+    if (f && !m.paused && f.readyState >= 2) { let d = f.currentTime - m.currentTime;
+      if (Math.abs(d) > 2.5) d -= Math.sign(d) * 5;
+      if (Math.abs(d) > 0.25) { f.currentTime = m.currentTime; f.playbackRate = 1; } else f.playbackRate = Math.min(1.1, Math.max(0.9, 1 - d * 2)); } }
+  requestAnimationFrame(vsync);
+})();
 applyLang();
 document.getElementById("guide").onchange = e => document.body.classList.toggle("show-guide", e.target.checked);
 </script>
