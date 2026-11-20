@@ -1,6 +1,6 @@
 ---
 name: banner-loop
-description: Make or fix a 32:9 hero-banner loop video (5 s seamless, dark calm centre for an HTML headline) from a Blender scene in this repo — render 1920x540, AI-upscale to 3840x1080, QC the loop, optionally review and fix. Also the asset/tool license rules for anything that ends up in these videos. Use for "render the X loop", "4K upscale", "make the loop calmer", "new banner scene", "asset license".
+description: Make or fix a 32:9 hero-banner loop video (5 s seamless, dark calm centre for an HTML headline) from the bundled Blender scenes or your own — render 1920x540, AI-upscale to 3840x1080, QC the loop, optionally review and fix. Also the asset/tool license rules for anything that ends up in these videos. Use for "render the X loop", "4K upscale", "make the loop calmer", "new banner scene", "asset license", and Korean requests like "배너 루프 렌더", "4K 업스케일", "루프 다시 뽑아", "에셋 라이선스".
 ---
 
 # banner-loop
@@ -15,7 +15,7 @@ Ask the user only for what changes the result (which scene, what to fix, ship or
 `R` = the repo root: `${CLAUDE_PLUGIN_ROOT}` when installed as a plugin (if that text is shown literally, you are in
 a clone — use the clone's root, the folder with `tools/loop.sh`). Scenes `R/scenes/`, tools `R/tools/`.
 When running from a plugin install, write outputs into the user's current project, not the plugin cache:
-`BANNER_LOOP_OUT="$PWD/out" R/tools/loop.sh ...`. First run there: `node R/bin/fetch-assets.mjs` (two CC0 textures).
+`BANNER_LOOP_OUT="$PWD/out" R/tools/loop.sh ...`. First run there: `node R/bin/fetch-assets.mjs` (two CC0 textures; they land in the plugin cache, so re-run after a plugin update).
 For custom scenes, clone the repo and work in the clone.
 
 ## Options (one command)
@@ -87,5 +87,5 @@ Not legal advice: have the publisher's legal team confirm before public use.
 
 ## Done means
 
-150 frames, seam ≈ adjacent diff, centre calm, no pumping (numbers reported), both mp4s exist, sheet viewed, scene
-changes committed.
+150 frames, seam ≈ adjacent diff, centre calm, no pumping (numbers reported), both mp4s exist, sheet viewed. In a clone,
+scene changes committed; from a plugin install, scenes are read-only — copy one into a clone to change it.

@@ -6,6 +6,11 @@
 <title>banner-loop · demo</title>
 <meta name="description" content="Seamless 32:9 hero-banner loops made from code: Blender scenes, Cycles 1920x540, Apple AI 4x upscale to 3840x1080.">
 <link rel="icon" href="logo.svg" type="image/svg+xml">
+<meta property="og:title" content="banner-loop — seamless 32:9 hero-banner loops from code">
+<meta property="og:description" content="Blender scenes → Cycles 1920×540 → Apple AI 4× upscale → 3840×1080. Compare the render and the upscale side by side.">
+<meta property="og:image" content="https://banner-loop-demo.vercel.app/posters/10_cable_trays.jpg">
+<meta property="og:url" content="https://banner-loop-demo.vercel.app/">
+<meta name="twitter:card" content="summary_large_image">
 <style>
   :root {
     --bg: #07090d; --panel: #0e131a; --line: #1d2530; --fg: #eef2f6; --muted: #8b97a6;
@@ -39,6 +44,8 @@
   .hero .dots button { width: 22px; height: 22px; padding: 0; border: 0; background: none; cursor: pointer; display: grid; place-items: center; }
   .hero .dots button::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.35); }
   .hero .dots button[aria-current="true"]::before { background: var(--acc); }
+  .hero .dots .hp { width: auto; padding: 0 8px; color: #dfe7ee; font-size: 12px; }
+  .hero .dots .hp::before { display: none; }
 
   main { max-width: 1240px; margin: 0 auto; padding: 32px 16px 64px; }
   h2 { font-size: 20px; margin: 40px 0 10px; }
@@ -93,6 +100,7 @@
   .vtag { position: absolute; top: 10px; font-size: 12px; background: rgba(0,0,0,.6); color: #dfe7ee; padding: 3px 9px; border-radius: 999px; display: none; pointer-events: none; }
   .vtag.l { left: 10px; } .vtag.r { right: 10px; color: var(--acc); }
   .vhint { color: var(--muted); font-size: 12px; margin: 0; text-align: center; }
+  @media (max-width: 640px) { .vbar { gap: 6px; font-size: 13px; } .vbar button { padding: 4px 7px; font-size: 12px; } .vbar #v11, .vhint { display: none; } }
   .card .guide { position: absolute; top: 0; bottom: 0; left: 35%; width: 30%; border-left: 1px dashed rgba(111,240,226,.55);
     border-right: 1px dashed rgba(111,240,226,.55); background: rgba(111,240,226,.05); display: none; }
   .show-guide .card .guide { display: block; }
@@ -107,7 +115,8 @@
   .stat b { display: block; font-size: 22px; }
   .stat span { color: var(--muted); font-size: 14px; }
   footer { border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; padding: 20px 16px; text-align: center; }
-  @media (max-width: 640px) { header.top nav a.hide-sm { display: none; } .hero .label { display: none; } }
+  @media (max-width: 640px) { header.top nav a.hide-sm { display: none; } .hero .label { display: none; }
+    #modes { width: 100%; } #modes button { flex: 1; padding: 6px 4px; font-size: 12px; white-space: nowrap; } }
   @media (prefers-reduced-motion: reduce) { .hero video { transition: none; } }
 </style>
 </head>
@@ -119,7 +128,7 @@
     <a href="#loops" data-i18n="navLoops">Loops</a>
     <a href="#install" class="hide-sm" data-i18n="navInstall">Install</a>
     <a href="https://github.com/opskill/banner-loop">GitHub</a>
-    <button type="button" id="lang" class="lang" aria-label="Language">한국어</button>
+    <button type="button" id="lang" class="lang" lang="ko">한국어</button>
   </nav>
 </header>
 
@@ -130,7 +139,7 @@
     <p data-i18n="heroSub">The centre stays dark and calm so your HTML headline reads on every frame.</p>
   </div>
   <div class="label" id="heroLabel"></div>
-  <div class="dots" id="heroDots"></div>
+  <div class="dots" id="heroDots"><button type="button" id="heroPause" class="hp" aria-pressed="false"></button></div>
 </section>
 
 <main>
@@ -154,7 +163,7 @@
       <button type="button" id="vzout" aria-label="Zoom out">−</button><span class="zv" id="vz">1.0×</span><button type="button" id="vzin" aria-label="Zoom in">+</button>
       <button type="button" id="vfit" data-i18n="zoomFit">Fit</button><button type="button" id="v11">1:1</button><button type="button" id="vfs" data-i18n="vfs">⛶</button><button type="button" id="vclose" aria-label="Close">✕</button></div>
     <div class="vstage" id="vstage"><div class="vlayer lo"><video muted loop playsinline></video></div><div class="vlayer hi"><video muted loop playsinline></video></div>
-      <div class="vdiv" id="vdiv"></div><span class="vtag l">1920×540</span><span class="vtag r">AI 4× · 3840×1080</span></div>
+      <div class="vdiv" id="vdiv" tabindex="0" role="slider" aria-label="Divider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50"></div><span class="vtag l">1920×540</span><span class="vtag r">AI 4× · 3840×1080</span></div>
     <p class="vhint" data-i18n="vhint">Scroll / pinch to zoom at the cursor · drag to pan · drag ◀ ▶ to move the divider · double-click 3× · Esc to close</p>
   </div>
   <div class="grid" id="grid"></div>
@@ -184,10 +193,10 @@ tools/loop.sh --scene concept_cable_trays --key 10_cable_trays</code></pre>
 
 <script>
 const LOOPS = [
-  ["10_cable_trays", "Cable trays", "50% 50%", "케이블 트레이"],
-  ["06_gpu_macro", "GPU macro", "50% 50%", "GPU 매크로"],
-  ["05_cloud_blocks", "Cloud blocks", "78% 50%", "클라우드 블록"],
-  ["01_ix_hub", "IX hub", "50% 50%", "IX 허브"],
+  ["10_cable_trays", "Cable trays", "18% 50%", "케이블 트레이"],
+  ["06_gpu_macro", "GPU macro", "22% 50%", "GPU 매크로"],
+  ["05_cloud_blocks", "Cloud blocks", "82% 50%", "클라우드 블록"],
+  ["01_ix_hub", "IX hub", "12% 50%", "IX 허브"],
   ["03_cdn_planet", "CDN planet", "70% 80%", "CDN 행성"],
   ["02_fiber_macro", "Fiber patch panel", "50% 50%", "광 패치 패널"],
   ["04_city_dataflow", "City data flow", "50% 50%", "도시 데이터 흐름"],
@@ -226,7 +235,9 @@ function applyLang() {
   const d = T[lang]; document.documentElement.lang = lang;
   document.querySelectorAll("[data-i18n]").forEach(el => { const v = d[el.dataset.i18n]; if (v != null) el.textContent = v; });
   document.querySelectorAll("[data-i18n-html]").forEach(el => { el.innerHTML = d[el.dataset.i18nHtml]; });
-  document.querySelectorAll("[data-name-en]").forEach(el => { el.textContent = lang === "ko" ? el.dataset.nameKo : el.dataset.nameEn; });
+  document.querySelectorAll("b[data-name-en]").forEach(el => { el.textContent = lang === "ko" ? el.dataset.nameKo : el.dataset.nameEn; });
+  document.querySelectorAll(".hd").forEach(el => el.setAttribute("aria-label", lang === "ko" ? el.dataset.nameKo : el.dataset.nameEn));
+  if (typeof hp !== "undefined") hp.setAttribute("aria-label", lang === "ko" ? (paused ? "재생" : "일시정지") : (paused ? "Play" : "Pause"));
   document.querySelectorAll("[data-meta]").forEach(el => { el.textContent = d.meta; });
   document.getElementById("lang").textContent = d.switchTo;
   if (typeof cur === "number" && cur >= 0) label.textContent = lang === "ko" ? heroSet[cur][3] : heroSet[cur][1];
@@ -243,13 +254,13 @@ const vids = heroSet.map(([k, name, pos], i) => {
   const v = document.createElement("video");
   Object.assign(v, { muted: true, loop: true, playsInline: true, preload: i ? "none" : "auto" });
   v.dataset.src = src(k, wide() ? "4k" : "1920");
-  v.style.objectPosition = pos;
+  v.style.objectPosition = innerWidth < 700 ? pos : "50% 50%";   // phones crop 32:9 hard: aim off the dark centre
   v.poster = `posters/${k}.jpg`;
   hero.insertBefore(v, hero.firstChild);
   const b = document.createElement("button");
-  b.type = "button"; b.setAttribute("aria-label", name);
+  b.type = "button"; b.dataset.nameEn = name; b.dataset.nameKo = heroSet[i][3]; b.className = "hd";
   b.onclick = () => { show(i); restart(); };
-  dots.append(b);
+  dots.insertBefore(b, document.getElementById("heroPause"));
   return v;
 });
 let cur = -1, timer;
@@ -257,39 +268,48 @@ function show(i) {
   if (i === cur) return;
   const v = vids[i];
   if (!v.src) v.src = v.dataset.src;
-  v.currentTime = 0; v.play().catch(() => {});
+  v.currentTime = 0; if (!paused) v.play().catch(() => {});
   vids.forEach((x, j) => x.classList.toggle("on", j === i));
-  [...dots.children].forEach((d, j) => d.setAttribute("aria-current", j === i));
+  dots.querySelectorAll(".hd").forEach((d, j) => d.setAttribute("aria-current", j === i));
   label.textContent = lang === "ko" ? heroSet[i][3] : heroSet[i][1];
   const prev = vids[cur]; cur = i;
   if (prev) setTimeout(() => prev !== vids[cur] && prev.pause(), 1000);
   const next = vids[(i + 1) % vids.length]; if (!next.src) { next.src = next.dataset.src; next.preload = "auto"; }
 }
-function restart() { clearInterval(timer); if (!reduce) timer = setInterval(() => !document.hidden && show((cur + 1) % vids.length), 6000); }
-show(0); restart();
+let paused = reduce;   // reduced motion: start paused (poster only); the user can press play
+function restart() { clearInterval(timer); if (!paused) timer = setInterval(() => !document.hidden && show((cur + 1) % vids.length), 6000); }
+const hp = document.getElementById("heroPause");
+function setPaused(p) { paused = p; hp.setAttribute("aria-pressed", p); hp.textContent = p ? "▶" : "❚❚";
+  hp.setAttribute("aria-label", (lang === "ko" ? (p ? "재생" : "일시정지") : (p ? "Play" : "Pause")));
+  if (p) vids[cur] && vids[cur].pause(); else vids[cur] && vids[cur].play().catch(() => {}); restart(); }
+hp.onclick = () => setPaused(!paused);
+show(0); setPaused(paused);
 
 // grid: left = 1920 render, right = AI 4x upscale, same frame; only on-screen cards play
 const grid = document.getElementById("grid");
-let mode = "compare";
-document.body.classList.add("mode-compare");
+// compare (two decodes per clip) only on wide, mouse-driven screens without data saver; phones start on 1920
+let mode = matchMedia("(min-width: 700px) and (pointer: fine)").matches && !(navigator.connection && navigator.connection.saveData) ? "compare" : "1920";
+document.body.classList.add("mode-" + mode);
+document.querySelectorAll("#modes button").forEach(x => x.setAttribute("aria-pressed", x.dataset.mode === mode));
 const cards = [];
 const visible = new Set();
 const ensure = (v, res) => { if (!v.src) { v.src = src(v.dataset.k, res); v.preload = "auto"; } };
+let viewerOpen = false;
 const master = c => mode === "4k" ? c.hi : c.lo;
 const follower = c => mode === "compare" ? (master(c) === c.lo ? c.hi : c.lo) : null;
 function playCard(c) {
-  ensure(c.lo, "1920"); if (mode !== "1920") ensure(c.hi, "4k");
-  if (reduce) return;
+  ensure(c.lo, "1920"); if (mode !== "1920" && (c.ratio >= 0.5 || mode === "4k")) ensure(c.hi, "4k");   // 4K only for clips mostly on screen
+  if (reduce || viewerOpen) return;
   const m = master(c), f = follower(c);
   m.play().catch(() => {});
-  if (f) { f.currentTime = m.currentTime; f.play().catch(() => {}); }
+  if (f && f.src) { f.currentTime = m.currentTime; f.play().catch(() => {}); }
   else (m === c.lo ? c.hi : c.lo).pause();
 }
 const io = new IntersectionObserver(es => es.forEach(e => {
-  const c = e.target._card;
+  const c = e.target._card; c.ratio = e.intersectionRatio;
   if (e.isIntersecting) { visible.add(c); playCard(c); }
   else { visible.delete(c); c.lo.pause(); c.hi.pause(); }
-}), { rootMargin: "100px" });
+}), { rootMargin: "100px", threshold: [0, 0.5] });
 for (const [k, name, , nameKo] of LOOPS) {
   const el = document.createElement("article");
   el.className = "card";
@@ -306,7 +326,7 @@ for (const [k, name, , nameKo] of LOOPS) {
   const setSplit = x => { const r = media.getBoundingClientRect(); const p = Math.min(100, Math.max(0, (x - r.left) / r.width * 100));
     media.style.setProperty("--split", p + "%"); };
   let down = null;   // a tap opens the viewer; a drag moves the divider
-  media.addEventListener("pointerdown", e => { down = { x: e.clientX, moved: false }; media.setPointerCapture(e.pointerId); });
+  media.addEventListener("pointerdown", e => { if (e.button !== 0) return; down = { x: e.clientX, moved: false }; media.setPointerCapture(e.pointerId); });
   media.addEventListener("pointermove", e => { if (!down || !media.hasPointerCapture(e.pointerId)) return;
     if (Math.abs(e.clientX - down.x) > 5) down.moved = true;
     if (down.moved && mode === "compare") setSplit(e.clientX); });
@@ -340,6 +360,7 @@ document.querySelectorAll("#modes button").forEach(b => b.onclick = () => {
 
 // ---- zoom viewer: both layers share one transform (translate + scale), the divider stays in screen space
 const viewer = document.getElementById("viewer"), stage = document.getElementById("vstage");
+document.body.append(viewer);   // top level, so the rest of the page can be made inert while it is open
 const vlo = stage.querySelector(".lo video"), vhi = stage.querySelector(".hi video");
 let vmode = "compare", vz = 1, tx = 0, ty = 0, vcard = null, lastFocus = null;
 const vmaster = () => vmode === "4k" ? vhi : vlo, vfollower = () => vmode === "compare" ? (vmaster() === vlo ? vhi : vlo) : null;
@@ -372,7 +393,8 @@ function openViewer(c) {
   stage.style.setProperty("--split", c.media.style.getPropertyValue("--split") || "50%");
   viewer.hidden = false; document.body.style.overflow = "hidden";
   vz = 1; tx = ty = 0; vapply(); setVMode(mode);
-  c.lo.pause(); c.hi.pause();
+  viewerOpen = true; for (const x of visible) { x.lo.pause(); x.hi.pause(); }
+  document.querySelectorAll("body > :not(#viewer)").forEach(n => n.inert = true);
   document.getElementById("vclose").focus();
 }
 function closeViewer() {
@@ -380,7 +402,9 @@ function closeViewer() {
   if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
   const t1 = vmaster().currentTime;
   vlo.pause(); vhi.pause(); vlo.removeAttribute("src"); vhi.removeAttribute("src"); vlo.load(); vhi.load();
-  viewer.hidden = true; document.body.style.overflow = "";
+  viewer.hidden = true; document.body.style.overflow = ""; viewerOpen = false;
+  document.querySelectorAll("body > :not(#viewer)").forEach(n => n.inert = false);
+  for (const x of visible) if (x !== vcard) playCard(x);
   if (vcard) { master(vcard).currentTime = t1; if (visible.has(vcard)) playCard(vcard); }
   if (lastFocus) lastFocus.focus();
 }
@@ -406,6 +430,9 @@ vdiv.addEventListener("pointerdown", e => { e.stopPropagation(); dragDiv = true;
 vdiv.addEventListener("pointermove", e => { if (!dragDiv) return; const r = stage.getBoundingClientRect();
   stage.style.setProperty("--split", Math.min(100, Math.max(0, (e.clientX - r.left) / r.width * 100)) + "%"); });
 vdiv.addEventListener("pointerup", () => { dragDiv = false; });
+vdiv.addEventListener("keydown", e => { if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return; e.preventDefault(); e.stopPropagation();
+  const s = Math.min(100, Math.max(0, parseFloat(stage.style.getPropertyValue("--split") || 50) + (e.key === "ArrowLeft" ? -2 : 2)));
+  stage.style.setProperty("--split", s + "%"); vdiv.setAttribute("aria-valuenow", Math.round(s)); });
 stage.addEventListener("pointerdown", e => { ptrs.set(e.pointerId, pt(e)); stage.setPointerCapture(e.pointerId); stage.classList.add("drag");
   if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), z: vz }; } });
 stage.addEventListener("pointermove", e => {
