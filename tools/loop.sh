@@ -16,7 +16,7 @@
 #   --no-lock         don't take the shared GPU lock (only if nothing else renders)
 #   --env K=V         extra env var for the scene (repeatable), e.g. --env FIBER_CENTER_FILL=0.6
 #
-# Outputs (gitignored):
+# Outputs (gitignored; root = $BANNER_LOOP_OUT or <repo>/out):
 #   out/concepts/video/full/<key>_5s_1920x540_frames/f_####.png
 #   out/concepts/video/<key>_5s_1920x540.mp4
 #   out/concepts/video/<key>_5s_3840x1080_sr.mp4
@@ -24,7 +24,8 @@
 set -euo pipefail
 
 APP=$(cd "$(dirname "$0")/.." && pwd)
-V=$APP/out/concepts/video
+OUTROOT=${BANNER_LOOP_OUT:-$APP/out}   # set BANNER_LOOP_OUT when installed as a plugin (cache dir is replaced on update)
+V=$OUTROOT/concepts/video
 BLENDER_BIN=${BLENDER_BIN:-/Applications/Blender.app/Contents/MacOS/Blender}
 LOCK=/tmp/blender_concept.lock
 
@@ -107,7 +108,7 @@ ffmpeg -v error -y -framerate 30 -start_number $first -i "$F/f_%04d.png" "${ENC[
 echo "1920: $V/${key}_5s_1920x540.mp4"
 
 if [ $upscale = 4k ]; then
-  VTSR=$APP/out/vtsr
+  VTSR=$OUTROOT/vtsr
   if [ ! -x "$VTSR" ]; then
     clang -fobjc-arc -O2 -mmacosx-version-min=26.0 "$APP/tools/vtsr.m" -o "$VTSR" \
       -framework Foundation -framework VideoToolbox -framework CoreVideo -framework CoreMedia \

@@ -10,10 +10,18 @@ down to 3840x1080 → `_sr.mp4` → QC numbers + contact sheet.
 
 Ask the user only for what changes the result (which scene, what to fix, ship or not). Everything else has defaults.
 
+## Where things are
+
+`R` = the repo root: `${CLAUDE_PLUGIN_ROOT}` when installed as a plugin (if that text is shown literally, you are in
+a clone — use the clone's root, the folder with `tools/loop.sh`). Scenes `R/scenes/`, tools `R/tools/`.
+When running from a plugin install, write outputs into the user's current project, not the plugin cache:
+`BANNER_LOOP_OUT="$PWD/out" R/tools/loop.sh ...`. First run there: `node R/bin/fetch-assets.mjs` (two CC0 textures).
+For custom scenes, clone the repo and work in the clone.
+
 ## Options (one command)
 
 ```bash
-tools/loop.sh --scene concept_cable_trays --key 10_cable_trays
+R/tools/loop.sh --scene concept_cable_trays --key 10_cable_trays
 ```
 
 | option | default | when |

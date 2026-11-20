@@ -79,11 +79,27 @@ model is warmed up at frame 1 and the loop seam stays clean.
 so several agents or jobs can queue on one GPU without fighting. If a crash leaves the lock behind, remove it once no
 Blender process is running.
 
-## Using it with Claude Code
+## Install as a Claude Code plugin
 
-`.claude/skills/banner-loop/SKILL.md` is a [Claude Code skill](https://docs.claude.com/en/docs/claude-code/skills)
-that teaches the agent the pipeline, the banner rules, a review → fix loop, and the asset license rules. Open the repo in
-Claude Code and ask e.g. "render the cable trays loop in 4K" or "make the CDN arcs calmer and re-render".
+The repo is also a Claude Code plugin marketplace with one plugin (`banner-loop`) that ships the
+`banner-loop` skill: the pipeline, the banner rules, a review → fix loop and the asset license rules.
+
+```bash
+claude plugin marketplace add jsc7727/banner-loop
+claude plugin install banner-loop@banner-loop
+```
+
+or inside a session: `/plugin marketplace add jsc7727/banner-loop` then `/plugin install banner-loop@banner-loop`.
+Then ask in plain words ("render the cable trays loop in 4K", "make the CDN arcs calmer and re-render") or call
+`/banner-loop:banner-loop`. From a plugin install, outputs go to `./out` of the project you are in
+(`BANNER_LOOP_OUT`), not into the plugin cache.
+
+Other ways to get the skill:
+- **Clone and open** the repo in Claude Code — the skill is picked up from `.claude/skills/` automatically.
+- **Manual copy**: `cp -r skills/banner-loop ~/.claude/skills/` (the skill then expects a clone of this repo).
+- **One session only**: `claude --plugin-dir /path/to/banner-loop`.
+
+Update: `claude plugin marketplace update banner-loop`. Remove: `claude plugin uninstall banner-loop@banner-loop`.
 
 ## Writing a new scene
 
@@ -116,4 +132,4 @@ tools/loop.sh --scene concept_cable_trays --key 10_cable_trays
 
 - `--frames`, `--spp`, `--still`, `--resume`, `--upscale none` 같은 옵션은 위 표를 참고하세요.
 - 4K로 바로 렌더하는 것보다 약 3~3.5배 빠릅니다.
-- Claude Code에서는 `.claude/skills/banner-loop` 스킬로 같은 작업을 말로 시킬 수 있습니다.
+- Claude Code 플러그인으로 설치: `claude plugin marketplace add jsc7727/banner-loop` → `claude plugin install banner-loop@banner-loop`. 이후 \"케이블 트레이 4K로 렌더해줘\"처럼 말로 시키면 됩니다.

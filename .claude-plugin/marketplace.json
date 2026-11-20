@@ -1,0 +1,12 @@
+{
+  "name": "banner-loop",
+  "description": "Hero-banner loop video pipeline for Claude Code",
+  "owner": { "name": "jsc7727" },
+  "plugins": [
+    {
+      "name": "banner-loop",
+      "source": "./",
+      "description": "Render, AI-upscale and QC seamless 32:9 hero-banner loops from Blender scene scripts"
+    }
+  ]
+}
