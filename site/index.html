@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>banner-loop · demo</title>
+<meta name="description" content="Seamless 32:9 hero-banner loops made from code: Blender scenes, Cycles 1920x540, Apple AI 4x upscale to 3840x1080.">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #07090d; --panel: #0e131a; --line: #1d2530; --fg: #eef2f6; --muted: #8b97a6;
+    --acc: #6ff0e2; --acc2: #2e8cff;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.55 ui-sans-serif, -apple-system, "Segoe UI", "Pretendard", "Noto Sans KR", sans-serif; }
+  a { color: var(--acc); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  header.top { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--line); }
+  header.top img { width: 28px; height: 28px; border-radius: 7px; }
+  header.top b { font-size: 16px; letter-spacing: .2px; }
+  header.top nav { margin-left: auto; display: flex; gap: 18px; font-size: 14px; }
+
+  /* hero: the banner itself, 32:9 */
+  .hero { position: relative; width: 100%; aspect-ratio: 32 / 9; min-height: 300px; overflow: hidden; background: #000; }
+  .hero video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .9s ease; }
+  .hero video.on { opacity: 1; }
+  .hero .copy { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; padding: 0 16px; pointer-events: none;
+    background: radial-gradient(ellipse 34% 60% at 50% 50%, rgba(0,0,0,.35), transparent 70%); }
+  .hero .eyebrow { font-size: 12px; letter-spacing: .32em; text-transform: uppercase; color: #b9c6d3; }
+  .hero .copy > * { text-shadow: 0 1px 12px rgba(0,0,0,.85), 0 0 2px rgba(0,0,0,.6); }
+  .hero h1 { margin: .35em 0 .3em; font-size: clamp(26px, 3.6vw, 56px); line-height: 1.12; font-weight: 700; }
+  .hero p { margin: 0; color: #c8d2dc; font-size: clamp(13px, 1.1vw, 17px); }
+  .hero .label { position: absolute; left: 16px; bottom: 12px; font-size: 12px; color: #aab6c3; background: rgba(0,0,0,.45);
+    padding: 4px 9px; border-radius: 999px; pointer-events: none; }
+  .hero .dots { position: absolute; right: 16px; bottom: 12px; display: flex; gap: 6px; }
+  .hero .dots button { width: 22px; height: 22px; padding: 0; border: 0; background: none; cursor: pointer; display: grid; place-items: center; }
+  .hero .dots button::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.35); }
+  .hero .dots button[aria-current="true"]::before { background: var(--acc); }
+
+  main { max-width: 1240px; margin: 0 auto; padding: 32px 16px 64px; }
+  h2 { font-size: 20px; margin: 40px 0 10px; }
+  .lede { color: var(--muted); max-width: 820px; margin: 0 0 18px; }
+  .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 0 0 16px; color: var(--muted); font-size: 14px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button { background: none; border: 0; color: var(--muted); padding: 6px 12px; cursor: pointer; font: inherit; }
+  .seg button[aria-pressed="true"] { background: var(--panel); color: var(--fg); }
+  label.chk { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 560px), 1fr)); gap: 18px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .card .media { position: relative; aspect-ratio: 32 / 9; background: #000; }
+  .card video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .card .guide { position: absolute; top: 0; bottom: 0; left: 35%; width: 30%; border-left: 1px dashed rgba(111,240,226,.55);
+    border-right: 1px dashed rgba(111,240,226,.55); background: rgba(111,240,226,.05); display: none; }
+  .show-guide .card .guide { display: block; }
+  .card .meta { display: flex; justify-content: space-between; gap: 10px; padding: 10px 14px; font-size: 14px; }
+  .card .meta span { color: var(--muted); }
+  .card .meta a { white-space: nowrap; }
+
+  pre { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; overflow-x: auto; font-size: 13px; }
+  code { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 18px; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .stat b { display: block; font-size: 22px; }
+  .stat span { color: var(--muted); font-size: 14px; }
+  footer { border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; padding: 20px 16px; text-align: center; }
+  @media (max-width: 640px) { header.top nav a.hide-sm { display: none; } .hero .label { display: none; } }
+  @media (prefers-reduced-motion: reduce) { .hero video { transition: none; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <img src="logo.svg" alt="">
+  <b>banner-loop</b>
+  <nav>
+    <a href="#loops">Loops</a>
+    <a href="#install" class="hide-sm">Install</a>
+    <a href="https://github.com/opskill/banner-loop">GitHub</a>
+  </nav>
+</header>
+
+<section class="hero" id="hero" aria-roledescription="carousel" aria-label="Banner preview">
+  <div class="copy">
+    <div class="eyebrow">Sample headline</div>
+    <h1>Seamless loops,<br>made from code</h1>
+    <p>The centre stays dark and calm so your HTML headline reads on every frame.</p>
+  </div>
+  <div class="label" id="heroLabel"></div>
+  <div class="dots" id="heroDots"></div>
+</section>
+
+<main>
+  <p class="lede">Every clip below is a 5-second, 150-frame loop that never shows a seam: Blender scene scripts rendered with
+    Cycles at 1920×540, then upscaled to 3840×1080 with Apple's on-device super-resolution. No stock footage, no text or
+    logos in the video — only procedural geometry and two CC0 textures.</p>
+
+  <h2 id="loops">The 10 loops</h2>
+  <div class="toolbar">
+    <div class="seg" role="group" aria-label="Resolution">
+      <button type="button" data-res="1920" aria-pressed="true">1920×540</button>
+      <button type="button" data-res="4k" aria-pressed="false">3840×1080 (AI 4×)</button>
+    </div>
+    <label class="chk"><input type="checkbox" id="guide"> show headline zone (centre 30 %)</label>
+  </div>
+  <div class="grid" id="grid"></div>
+
+  <h2>Why render 1920 and upscale</h2>
+  <div class="cols">
+    <div class="stat"><b>7–23 s / frame</b><span>Cycles at 1920×540 on an M2 Pro (17–57 min per loop)</span></div>
+    <div class="stat"><b>≈ 5 min 20 s</b><span>AI 4× upscale per loop, independent of scene complexity</span></div>
+    <div class="stat"><b>~3–3.5× faster</b><span>than rendering 3840×1080 directly (≈ 4× the pixels to path-trace)</span></div>
+  </div>
+
+  <h2 id="install">Use it</h2>
+  <p class="lede">As a Claude Code plugin — then just ask “render the cable trays loop in 4K”:</p>
+  <pre><code>claude plugin marketplace add opskill/banner-loop
+claude plugin install banner-loop@banner-loop</code></pre>
+  <p class="lede">Or from a clone (macOS 26+ for the 4K step, Blender 5.x, Node 20+, ffmpeg):</p>
+  <pre><code>git clone https://github.com/opskill/banner-loop && cd banner-loop
+npm run assets
+tools/loop.sh --scene concept_cable_trays --key 10_cable_trays</code></pre>
+</main>
+
+<footer>
+  MIT · scenes and pipeline by <a href="https://github.com/opskill">opskill</a> ·
+  textures <a href="https://polyhaven.com/license">Poly Haven CC0</a> ·
+  <a href="https://github.com/opskill/banner-loop/releases">download the MP4s</a>
+</footer>
+
+<script>
+const LOOPS = [
+  ["10_cable_trays", "Cable trays", "50% 50%"],
+  ["06_gpu_macro", "GPU macro", "50% 50%"],
+  ["05_cloud_blocks", "Cloud blocks", "78% 50%"],
+  ["01_ix_hub", "IX hub", "50% 50%"],
+  ["03_cdn_planet", "CDN planet", "70% 80%"],
+  ["02_fiber_macro", "Fiber patch panel", "50% 50%"],
+  ["04_city_dataflow", "City data flow", "50% 50%"],
+  ["07_security_lattice", "Security lattice", "50% 50%"],
+  ["08_domain_grid", "Domain grid", "50% 50%"],
+  ["09_rack_closeup", "Rack close-up", "50% 50%"],
+];
+const src = (k, res) => `videos/${k}_${res === "4k" ? "3840x1080" : "1920x540"}.mp4`;
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const wide = () => innerWidth * devicePixelRatio > 2200 && !(navigator.connection && navigator.connection.saveData);
+
+// hero: first 6 loops, crossfade every 6 s
+const hero = document.getElementById("hero"), dots = document.getElementById("heroDots"), label = document.getElementById("heroLabel");
+const heroSet = LOOPS.slice(0, 6);
+const vids = heroSet.map(([k, name, pos], i) => {
+  const v = document.createElement("video");
+  Object.assign(v, { muted: true, loop: true, playsInline: true, preload: i ? "none" : "auto" });
+  v.dataset.src = src(k, wide() ? "4k" : "1920");
+  v.style.objectPosition = pos;
+  v.poster = `posters/${k}.jpg`;
+  hero.insertBefore(v, hero.firstChild);
+  const b = document.createElement("button");
+  b.type = "button"; b.setAttribute("aria-label", name);
+  b.onclick = () => { show(i); restart(); };
+  dots.append(b);
+  return v;
+});
+let cur = -1, timer;
+function show(i) {
+  if (i === cur) return;
+  const v = vids[i];
+  if (!v.src) v.src = v.dataset.src;
+  v.currentTime = 0; v.play().catch(() => {});
+  vids.forEach((x, j) => x.classList.toggle("on", j === i));
+  [...dots.children].forEach((d, j) => d.setAttribute("aria-current", j === i));
+  label.textContent = heroSet[i][1];
+  const prev = vids[cur]; cur = i;
+  if (prev) setTimeout(() => prev !== vids[cur] && prev.pause(), 1000);
+  const next = vids[(i + 1) % vids.length]; if (!next.src) { next.src = next.dataset.src; next.preload = "auto"; }
+}
+function restart() { clearInterval(timer); if (!reduce) timer = setInterval(() => !document.hidden && show((cur + 1) % vids.length), 6000); }
+show(0); restart();
+
+// grid: play only what is on screen
+const grid = document.getElementById("grid");
+let res = "1920";
+const io = new IntersectionObserver(es => es.forEach(e => {
+  const v = e.target;
+  if (e.isIntersecting) { if (!v.src || v.dataset.res !== res) { v.src = src(v.dataset.k, res); v.dataset.res = res; } if (!reduce) v.play().catch(() => {}); }
+  else v.pause();
+}), { rootMargin: "100px" });
+for (const [k, name] of LOOPS) {
+  const c = document.createElement("article");
+  c.className = "card";
+  c.innerHTML = `<div class="media"><video muted loop playsinline preload="none" poster="posters/${k}.jpg"></video><div class="guide"></div></div>
+    <div class="meta"><b>${name}</b><span>5 s · 150 frames</span>
+    <a href="${src(k, "1920")}" download>1920</a><a href="${src(k, "4k")}" download>4K</a></div>`;
+  const v = c.querySelector("video"); v.dataset.k = k;
+  grid.append(c); io.observe(v);
+}
+document.querySelectorAll(".seg button").forEach(b => b.onclick = () => {
+  res = b.dataset.res;
+  document.querySelectorAll(".seg button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  grid.querySelectorAll("video").forEach(v => { io.unobserve(v); io.observe(v); });
+});
+document.getElementById("guide").onchange = e => document.body.classList.toggle("show-guide", e.target.checked);
+</script>
+</body>
+</html>

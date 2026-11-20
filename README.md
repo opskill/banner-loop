@@ -8,7 +8,17 @@ Apple's on-device AI super-resolution (4×) → 3840×1080 MP4, with loop QC num
 Built for website hero banners: 5-second loops that never show a seam, keep the centre dark and calm for an HTML
 headline, move gently, and contain no text or logos.
 
-[한국어 요약](#한국어-요약)
+**[▶ Live demo](https://banner-loop-demo.vercel.app)** · [download the MP4s](https://github.com/opskill/banner-loop/releases/tag/v0.1.0) · [한국어 요약](#한국어-요약)
+
+![Cable trays loop](docs/examples/10_cable_trays.gif)
+
+| | |
+|---|---|
+| ![Cable trays](docs/examples/10_cable_trays.jpg) Cable trays | ![GPU macro](docs/examples/06_gpu_macro.jpg) GPU macro |
+| ![Cloud blocks](docs/examples/05_cloud_blocks.jpg) Cloud blocks | ![IX hub](docs/examples/01_ix_hub.jpg) IX hub |
+| ![CDN planet](docs/examples/03_cdn_planet.jpg) CDN planet | ![Fiber patch panel](docs/examples/02_fiber_macro.jpg) Fiber patch panel |
+| ![City data flow](docs/examples/04_city_dataflow.jpg) City data flow | ![Security lattice](docs/examples/07_security_lattice.jpg) Security lattice |
+| ![Domain grid](docs/examples/08_domain_grid.jpg) Domain grid | ![Rack close-up](docs/examples/09_rack_closeup.jpg) Rack close-up |
 
 | | |
 |---|---|
@@ -134,4 +144,5 @@ tools/loop.sh --scene concept_cable_trays --key 10_cable_trays
 
 - `--frames`, `--spp`, `--still`, `--resume`, `--upscale none` 같은 옵션은 위 표를 참고하세요.
 - 4K로 바로 렌더하는 것보다 약 3~3.5배 빠릅니다.
+- 데모: https://banner-loop-demo.vercel.app · 예제 mp4: Releases v0.1.0
 - Claude Code 플러그인으로 설치: `claude plugin marketplace add opskill/banner-loop` → `claude plugin install banner-loop@banner-loop`. 이후 "케이블 트레이 4K로 렌더해줘"처럼 말로 시키면 됩니다.
