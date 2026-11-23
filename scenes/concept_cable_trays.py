@@ -26,7 +26,7 @@ def _extra(p):
     p.add_argument("--end", type=int, default=None, help="animation end frame (chunked render)")
     p.add_argument("--spp", type=int, default=None)
     p.add_argument("--seed", type=int, default=0)
-    p.add_argument("--size", default="1920x540", help="e.g. 3840x1080")
+    p.add_argument("--size", default="%dx%d" % lib.loop_size(), help="e.g. 3840x1080")
 
 
 args = lib.parse_args("concept_cable_trays", frames=150, engine="cycles", extra=_extra)

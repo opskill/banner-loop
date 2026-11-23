@@ -56,6 +56,7 @@ tools/loop.sh --scene concept_cable_trays --key 10_cable_trays  # 전체 루프 
 |---|---|---|
 | `--scene NAME` | 필수 | `scenes/NAME.py` |
 | `--key KEY` | 필수 | 출력 이름, 예: `10_cable_trays` |
+| `--size WxH` | `1920x540` | 씬이 렌더하는 프레임 크기. 출력 이름과 2배 업스케일이 따라감. 다른 형식(쇼츠 `1080x1920 --upscale none`, 피드 `1080x1350`)은 씬이 지원해야 함 — *새 씬 만들기* 참고 |
 | `--frames A-B` | `1-150` | 5초 @ 30fps. 일부 구간(예: `40-60`)을 주면 그 프레임만 다시 렌더한 뒤 폴더의 전체 시퀀스로 인코딩/업스케일/점검 (1..N 프레임이 모두 있어야 함). 프레임 폴더를 비우는 건 `--resume` 없이 전체 구간을 줄 때뿐 |
 | `--spp N` | `64` | Cycles 샘플 수 (디테일 많은 매크로 씬은 96, 초안은 32) |
 | `--chunk N` | `50` | Blender 한 번에 렌더할 프레임 수 |
@@ -126,6 +127,14 @@ claude plugin install banner-loop@banner-loop
 `parse_args`, `reset_scene`, `setup_render`, `make_pbr`, `make_tiled_pbr`, `add_area_light`, `look_at`.
 Blender 버전별 차이는 `lib.py` 안에서만 처리합니다.
 규칙: 글자·로고 없음, 가운데는 어둡고 차분하게, 루프 동안 정수 주기, 시드 고정.
+
+다른 형식: `lib.loop_size()`로 크기를 읽고(`loop.sh --size`가 넘김) `scene.render.resolution_x/y`를 맞춘 뒤 그 비율에 맞게
+카메라 구도를 다시 잡습니다. `loop.sh`는 1프레임 크기를 확인하고 다르면 멈춥니다. AI 업스케일은 입력이 최대 1920×1080이라
+세로 크기는 `--upscale none`으로 렌더합니다:
+
+```bash
+tools/loop.sh --scene my_scene --key my_scene_shorts --size 1080x1920 --upscale none
+```
 
 ## 에셋과 라이선스
 

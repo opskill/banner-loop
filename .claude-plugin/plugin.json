@@ -1,7 +1,7 @@
 {
   "name": "banner-loop",
   "description": "Seamless 32:9 hero-banner loop videos from code: Blender scenes -> Cycles 1920x540 -> Apple AI 4x upscale -> 3840x1080, with loop QC",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "author": {
     "name": "opskill"
   },

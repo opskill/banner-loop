@@ -2,6 +2,7 @@
 import argparse
 import math
 import os
+import re
 import sys
 
 import bpy
@@ -35,6 +36,17 @@ def parse_args(name, frames=150, extra=None, engine="eevee"):
 
 
 # ---------------------------------------------------------------- scene / render
+def loop_size(default=(1920, 540)):
+    """Frame size (w, h) asked for by tools/loop.sh --size (env BANNER_LOOP_SIZE=WxH), else `default`.
+
+    A scene that supports other formats (e.g. 1080x1920 Shorts, 1080x1350 feed) sets
+    scene.render.resolution_x/y from this and reframes its camera for the aspect.
+    """
+    v = os.environ.get("BANNER_LOOP_SIZE", "")
+    m = re.fullmatch(r"(\d+)x(\d+)", v)
+    return (int(m.group(1)), int(m.group(2))) if m else default
+
+
 def reset_scene():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     return bpy.context.scene

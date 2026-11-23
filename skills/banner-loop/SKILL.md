@@ -28,6 +28,7 @@ R/tools/loop.sh --scene concept_cable_trays --key 10_cable_trays
 |---|---|---|
 | `--scene NAME` | required | `scenes/NAME.py` |
 | `--key KEY` | required | output name `<nn>_<name>` |
+| `--size WxH` | `1920x540` | other formats (Shorts 1080x1920, feed 1080x1350) — scene must read `lib.loop_size()`; >1920x1080 needs `--upscale none` |
 | `--frames A-B` | `1-150` | 5 s @ 30 fps; partial re-render of a range |
 | `--spp N` | `64` | 96 for noisy macro scenes (fiber, ix_hub); 32 for drafts |
 | `--chunk N` | `50` | frames per GPU-lock hold |

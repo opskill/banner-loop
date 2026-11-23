@@ -56,6 +56,7 @@ Results land in `out/concepts/video/` (gitignored).
 |---|---|---|
 | `--scene NAME` | required | `scenes/NAME.py` |
 | `--key KEY` | required | output name, e.g. `10_cable_trays` |
+| `--size WxH` | `1920x540` | frame size the scene renders; names and the 2× upscale follow it. For other formats (Shorts `1080x1920 --upscale none`, feed `1080x1350`) the scene must support it — see *Writing a new scene* |
 | `--frames A-B` | `1-150` | 5 s @ 30 fps. A partial range (e.g. `40-60`) re-renders only those frames, then encodes/upscales/QCs the whole sequence (frames 1..N must all exist); only a full range without `--resume` clears the frames folder |
 | `--spp N` | `64` | Cycles samples (96 for fine-detail macro scenes, 32 for drafts) |
 | `--chunk N` | `50` | frames per Blender run |
@@ -125,6 +126,14 @@ Update: `claude plugin marketplace update banner-loop`. Remove: `claude plugin u
 Copy a scene (`concept_cable_trays.py` is the cleanest reference) and use the helpers in `scenes/lib.py`:
 `parse_args`, `reset_scene`, `setup_render`, `make_pbr`, `make_tiled_pbr`, `add_area_light`, `look_at`. Keep Blender-version differences inside `lib.py`.
 Rules: no text/logos, calm dark centre, integer periods over the loop, fixed seed.
+
+Other formats: read the size with `lib.loop_size()` (set by `loop.sh --size`), set `scene.render.resolution_x/y` from it and
+reframe the camera for that aspect. `loop.sh` checks frame 1 and stops if the scene rendered a different size. The AI
+upscaler takes at most 1920×1080 input, so render portrait sizes with `--upscale none`:
+
+```bash
+tools/loop.sh --scene my_scene --key my_scene_shorts --size 1080x1920 --upscale none
+```
 
 ## Assets and licenses
 

@@ -25,7 +25,7 @@ def _extra(p):
     p.add_argument("--start", type=int, default=None, help="animation start frame (chunked render)")
     p.add_argument("--end", type=int, default=None, help="animation end frame (chunked render)")
     p.add_argument("--spp", type=int, default=None)
-    p.add_argument("--size", default="1920x540", help="e.g. 960x270 (draft), 3840x1080")
+    p.add_argument("--size", default="%dx%d" % lib.loop_size(), help="e.g. 960x270 (draft), 3840x1080")
     p.add_argument("--draft", action="store_true", help="fast draft: low samples/bounces + adaptive sampling + GPU denoise")
 
 
